@@ -81,7 +81,6 @@ button {
   font-size: clamp(18px, 4.8vw, 32px);
   font-weight: 800;
   line-height: 1.2;
-  letter-spacing: 0;
 }
 
 .subtitle {
@@ -98,16 +97,49 @@ button {
   padding: 12px 16px 14px;
   color: #202124;
   background: #fff8cf;
+  border-bottom: 4px solid transparent;
   text-align: center;
+  transition:
+    background-color 0.3s,
+    border-color 0.3s;
+}
+
+.update-panel.warning {
+  background: #fff0b3;
+  border-color: #ed9c00;
+}
+
+.update-panel.danger {
+  color: #ffffff;
+  background: #c62828;
+  border-color: #8e0000;
 }
 
 .update-panel p {
   margin: 5px 0;
-  color: #202124;
+  color: inherit;
 }
 
 .updated-time {
-  font-weight: 700;
+  font-weight: 800;
+}
+
+.stale-message {
+  margin: 8px auto !important;
+  padding: 7px 10px;
+  max-width: 500px;
+  border-radius: 7px;
+  font-weight: 900;
+}
+
+.warning .stale-message {
+  color: #6b3d00;
+  background: #ffd87a;
+}
+
+.danger .stale-message {
+  color: #8e0000;
+  background: #ffffff;
 }
 
 .update-button {
@@ -129,7 +161,11 @@ button {
 
 .error-message {
   color: #b00020 !important;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+.danger .error-message {
+  color: #ffffff !important;
 }
 
 .content {
@@ -175,6 +211,22 @@ button {
   box-shadow: 0 3px 9px rgb(0 0 0 / 10%);
 }
 
+.parking-card-changed {
+  border: 3px solid #ffd400;
+  animation: changed-flash 1.2s ease-in-out 3;
+}
+
+@keyframes changed-flash {
+  0%,
+  100% {
+    background: #ffffff;
+  }
+
+  50% {
+    background: #fff3a3;
+  }
+}
+
 .number-button {
   display: grid;
   place-items: center;
@@ -202,6 +254,32 @@ button {
   font-weight: 800;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.status-change {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 5px 9px;
+  color: #ffffff;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.change-good {
+  background: #16833b;
+}
+
+.change-warning {
+  background: #e26a00;
+}
+
+.change-bad {
+  background: #c62828;
+}
+
+.change-unknown {
+  background: #616161;
 }
 
 .distance {
@@ -326,12 +404,18 @@ button {
     padding: 6px 8px;
     font-size: 12px;
   }
+
+  .status-change {
+    font-size: 12px;
+  }
 }
 
 @media (min-width: 900px) {
   .content {
     display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(400px, 0.75fr);
+    grid-template-columns:
+      minmax(0, 1.25fr)
+      minmax(400px, 0.75fr);
     align-items: start;
     gap: 14px;
     padding: 14px;
