@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 
 const MAP_URL =
   'https://www.google.com/maps/d/u/0/embed?mid=1sXRW3-SgAC1gtUy8siwDWRTeKiKGfTA&ehbc=2E312F'
 
-const TIMES_LOGO = 'https://times-info.net/common/responsive/images/logo.png'
+const TIMES_LOGO =
+  'https://times-info.net/common/responsive/images/logo.png'
 
-function statusClass(status) {
-  if (status === '空車') return 'available'
-  if (status === '混雑') return 'crowded'
-  if (status === '満車') return 'full'
-  if (status === '閉鎖') return 'closed'
-  return 'unknown'
+function getStatusClass(status) {
+  if (status === '空車') return 'status-free'
+  if (status === '混雑') return 'status-busy'
+  if (status === '満車') return 'status-full'
+  return 'status-unknown'
 }
 
 function App() {
@@ -20,130 +20,186 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function loadStatus() {
-    try {
-      setError('')
+  const loadStatus = useCallback(async () => {
+    setLoading(true)
+    setError('')
 
-      const response = await fetch(
-        `${import.meta.env.BASE_URL}status.json?t=${Date.now()}`,
-        { cache: 'no-store' },
-      )
+    try {
+      const url =
+        `${import.meta.env.BASE_URL}status.json?t=${Date.now()}`
+
+      const response = await fetch(url, {
+        cache: 'no-store',
+      })
 
       if (!response.ok) {
-        throw new Error('満空情報を取得できませんでした。')
+        throw new Error('満空情報を取得できませんでした')
       }
 
       const data = await response.json()
 
-      if (!Array.isArray(data.parks)) {
-        throw new Error('満空情報の形式が正しくありません。')
-      }
-
-      setParks(data.parks)
-      setUpdatedAt(data.updatedAt ?? '')
-    } catch (loadError) {
-      setError(loadError.message)
+      setParks(Array.isArray(data.parks) ? data.parks : [])
+      setUpdatedAt(data.updatedAt || data.fetchedAt || '')
+    } catch (fetchError) {
+      console.error(fetchError)
+      setError('満空情報を取得できませんでした')
     } finally {
       setLoading(false)
     }
-  }
-
-  function openParkingMap(name) {
-    window.open(
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`,
-      '_blank',
-      'noopener,noreferrer',
-    )
-  }
+  }, [])
 
   useEffect(() => {
     loadStatus()
 
-    const intervalId = window.setInterval(loadStatus, 60000)
+    const timer = window.setInterval(loadStatus, 60000)
 
-    const refreshWhenVisible = () => {
+    const handleFocus = () => {
+      loadStatus()
+    }
+
+    const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         loadStatus()
       }
     }
 
-    window.addEventListener('focus', loadStatus)
-    document.addEventListener('visibilitychange', refreshWhenVisible)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
-      window.clearInterval(intervalId)
-      window.removeEventListener('focus', loadStatus)
-      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      window.clearInterval(timer)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibility,
+      )
     }
-  }, [])
+  }, [loadStatus])
+
+  const scrollToMap = () => {
+    document
+      .getElementById('parking-map')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
-    <main className="app">
+    <div className="app">
       <header className="app-header">
-        <img className="times-logo" src={TIMES_LOGO} alt="Times" />
-        <div>
-          <h1>タイムズ Parking Information</h1>
-          <p>野田・吉野周辺のタイムズ駐車場 満空情報</p>
+        <div className="brand">
+          <img
+            className="times-logo"
+            src={TIMES_LOGO}
+            alt="Times"
+          />
+
+          <div className="brand-text">
+            <div className="brand-japanese">
+              タイムズの駐車場検索
+            </div>
+            <h1>タイムズ Parking Information</h1>
+          </div>
         </div>
+
+        <p className="subtitle">
+          野田・吉野周辺のタイムズ駐車場 満空情報
+        </p>
       </header>
 
-      <section className="status-bar">
-        <span>5分ごとにクラウドで自動更新</span>
-        <span>{updatedAt ? `最終更新：${updatedAt}` : '更新準備中'}</span>
-        <button type="button" onClick={loadStatus}>
-          更新
+      <section className="update-panel">
+        <p>5分ごとにクラウドで自動更新</p>
+
+        <p className="updated-time">
+          最終更新：{updatedAt || '取得中'}
+        </p>
+
+        <button
+          className="update-button"
+          type="button"
+          onClick={loadStatus}
+          disabled={loading}
+        >
+          {loading ? '更新中…' : '更新'}
         </button>
+
+        {error && <p className="error-message">{error}</p>}
       </section>
 
-      <section className="content">
-        <div className="map-panel">
+      <main className="content">
+        <section
+          id="parking-map"
+          className="map-panel"
+          aria-label="駐車場地図"
+        >
           <iframe
             className="parking-map"
-            title="野田・吉野 タイムズ駐車場マップ"
             src={MAP_URL}
+            title="野田・吉野周辺タイムズ駐車場地図"
             loading="eager"
+            allowFullScreen
           />
-        </div>
+        </section>
 
-        <div className="parking-list">
-          {loading && <p className="message">満空情報を取得中です…</p>}
+        <section className="parking-list">
+          {parks.map((park) => {
+            const officialUrl =
+              `https://times-info.net/P27-osaka/C103/park-detail-${park.id}/`
 
-          {error && <p className="message error-message">{error}</p>}
+            const googleMapsUrl =
+              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(park.name)}`
 
-          {!loading &&
-            !error &&
-            parks.map((park) => (
+            return (
               <article className="parking-card" key={park.id}>
                 <button
+                  className={`number-button number-${park.no}`}
                   type="button"
-                  className="park-number"
-                  onClick={() => openParkingMap(park.name)}
-                  aria-label={`${park.name}をGoogleマップで開く`}
+                  onClick={scrollToMap}
+                  aria-label={`地図の${park.no}番を確認`}
                 >
                   {park.no}
                 </button>
 
-                <div className="park-details">
+                <div className="parking-information">
                   <h2>{park.name}</h2>
-                  <p>{park.distance}</p>
+                  <p className="distance">{park.distance}</p>
+
+                  <div className="parking-links">
+                    <a
+                      className="official-link"
+                      href={officialUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      公式情報
+                    </a>
+
+                    <a
+                      className="map-link"
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Googleマップ
+                    </a>
+                  </div>
                 </div>
 
-                <span className={`status ${statusClass(park.status)}`}>
-                  {park.status}
-                </span>
-
-                <button
-                  type="button"
-                  className="route-button"
-                  onClick={() => openParkingMap(park.name)}
+                <div
+                  className={`parking-status ${getStatusClass(park.status)}`}
                 >
-                  地図
-                </button>
+                  {park.status || '不明'}
+                </div>
               </article>
-            ))}
-        </div>
-      </section>
-    </main>
+            )
+          })}
+
+          {!loading && parks.length === 0 && (
+            <p className="empty-message">
+              駐車場情報がありません
+            </p>
+          )}
+        </section>
+      </main>
+    </div>
   )
 }
 
