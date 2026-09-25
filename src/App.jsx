@@ -65,6 +65,13 @@ function getChangeClass(status) {
 function formatUpdatedAt(value) {
   if (!value) return '取得中'
 
+  const officialFormat =
+    /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/
+
+  if (officialFormat.test(value)) {
+    return value
+  }
+
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -135,7 +142,8 @@ function formatDistance(distance) {
 function App() {
   const [parks, setParks] = useState([])
   const [changes, setChanges] = useState({})
-  const [fetchedAt, setFetchedAt] = useState('')
+  const [officialUpdatedAt, setOfficialUpdatedAt] = useState('')
+  const [cloudFetchedAt, setCloudFetchedAt] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentTime, setCurrentTime] = useState(Date.now())
@@ -197,7 +205,15 @@ function App() {
 
       setParks(nextParks)
       setChanges(detectedChanges)
-      setFetchedAt(data.fetchedAt || data.updatedAt || '')
+
+      setOfficialUpdatedAt(
+        data.updatedAt || data.fetchedAt || '',
+      )
+
+      setCloudFetchedAt(
+        data.fetchedAt || data.updatedAt || '',
+      )
+
       setCurrentTime(Date.now())
     } catch (fetchError) {
       console.error(fetchError)
@@ -346,9 +362,9 @@ function App() {
   }, [parks])
 
   const ageMinutes = useMemo(() => {
-    if (!fetchedAt) return null
+    if (!cloudFetchedAt) return null
 
-    const fetchedTime = new Date(fetchedAt).getTime()
+    const fetchedTime = new Date(cloudFetchedAt).getTime()
 
     if (Number.isNaN(fetchedTime)) return null
 
@@ -356,7 +372,7 @@ function App() {
       0,
       Math.floor((currentTime - fetchedTime) / 60000),
     )
-  }, [fetchedAt, currentTime])
+  }, [cloudFetchedAt, currentTime])
 
   const staleLevel = useMemo(() => {
     if (ageMinutes === null) return ''
@@ -451,19 +467,20 @@ function App() {
         <p>5分ごとにクラウドで自動更新</p>
 
         <p className="updated-time">
-          最終更新：{formatUpdatedAt(fetchedAt)}
+          公式最終更新：
+          {formatUpdatedAt(officialUpdatedAt)}
         </p>
 
         {staleLevel === 'warning' && (
           <p className="stale-message">
-            最終更新から{ageMinutes}分経過しています
+            クラウド取得から{ageMinutes}分経過しています
           </p>
         )}
 
         {staleLevel === 'danger' && (
           <p className="stale-message">
             情報が古い可能性があります
-            （最終更新から{ageMinutes}分経過）
+            （クラウド取得から{ageMinutes}分経過）
           </p>
         )}
 
