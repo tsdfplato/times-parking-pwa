@@ -580,12 +580,27 @@ function App() {
       <section className={`update-panel ${staleLevel}`}>
         <p>5分ごとにクラウドで自動更新</p>
 
-        <p className="updated-time">
+               <p className="updated-time">
           公式最終更新：
           {formatUpdatedAt(officialUpdatedAt)}
           {relativeUpdatedAt && (
             <span className="relative-time">
               （{relativeUpdatedAt}）
+            </span>
+          )}
+        </p>
+
+        <p className="updated-time">
+          クラウド確認：
+          {formatUpdatedAt(cloudFetchedAt)}
+          {cloudFetchedAt && (
+            <span className="relative-time">
+              （
+              {formatRelativeTime(
+                cloudFetchedAt,
+                currentTime,
+              )}
+              ）
             </span>
           )}
         </p>
