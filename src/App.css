@@ -51,10 +51,10 @@ button {
 }
 
 .times-logo {
+  display: block;
   width: 92px;
   max-width: 28vw;
   height: auto;
-  display: block;
 }
 
 .brand-text {
@@ -106,8 +106,8 @@ button {
 }
 
 .update-panel.warning {
-  background: #fff9d9;
-  border-color: #e0a900;
+  background: #fff5df;
+  border-color: #e58a00;
 }
 
 .update-panel.danger {
@@ -162,10 +162,10 @@ button {
   gap: 8px;
   min-height: 58px;
   padding: 8px;
-  background: #ffffff;
+  color: #ffffff;
   border: 2px solid;
   border-radius: 12px;
-  box-shadow: 0 3px 10px rgb(15 23 42 / 8%);
+  box-shadow: 0 3px 10px rgb(15 23 42 / 12%);
 }
 
 .summary-item span {
@@ -178,21 +178,18 @@ button {
 }
 
 .summary-free {
-  color: #067235;
-  border-color: #159447;
-  background: #eaf9ef;
+  background: #0758a5;
+  border-color: #064986;
 }
 
 .summary-busy {
-  color: #8a5700;
-  border-color: #e4a400;
-  background: #fff8d8;
+  background: #e58a00;
+  border-color: #c97900;
 }
 
 .summary-full {
-  color: #a61f1f;
-  border-color: #dc3232;
-  background: #fff0f0;
+  background: #d52b2b;
+  border-color: #b92121;
 }
 
 .sort-panel {
@@ -233,7 +230,7 @@ button {
   font-weight: 800;
   text-align: center;
   background: #fff0f0;
-  border: 1px solid #dc3232;
+  border: 1px solid #d52b2b;
   border-radius: 8px;
 }
 
@@ -396,8 +393,8 @@ button {
 
 .map-link {
   color: #ffffff;
-  background: #176f3a;
-  border: 1px solid #176f3a;
+  background: #0758a5;
+  border: 1px solid #0758a5;
 }
 
 .parking-status {
@@ -413,19 +410,22 @@ button {
 }
 
 .status-free {
-  background: #159447;
+  color: #ffffff;
+  background: #0758a5;
 }
 
 .status-busy {
-  color: #2d2200;
-  background: #ffd12e;
+  color: #ffffff;
+  background: #e58a00;
 }
 
 .status-full {
-  background: #dc3232;
+  color: #ffffff;
+  background: #d52b2b;
 }
 
 .status-unknown {
+  color: #ffffff;
   background: #697386;
 }
 
@@ -439,23 +439,23 @@ button {
 }
 
 .change-good {
-  color: #075f2c;
-  background: #dff5e7;
+  color: #ffffff;
+  background: #0758a5;
 }
 
 .change-warning {
-  color: #755000;
-  background: #fff0ad;
+  color: #ffffff;
+  background: #e58a00;
 }
 
 .change-bad {
-  color: #9a1d1d;
-  background: #ffe1e1;
+  color: #ffffff;
+  background: #d52b2b;
 }
 
 .change-unknown {
-  color: #455064;
-  background: #e8ebef;
+  color: #ffffff;
+  background: #697386;
 }
 
 .empty-message {
