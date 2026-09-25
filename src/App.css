@@ -1,22 +1,29 @@
+:root {
+  font-family:
+    "BIZ UDPゴシック",
+    "Yu Gothic UI",
+    "Meiryo",
+    sans-serif;
+  color: #1d2733;
+  background: #eef2f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
 * {
   box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
-  background: #eef2f7;
+  background: #eef2f6;
 }
 
 body {
-  margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #172033;
-  background: #eef2f7;
-  font-family:
-    "BIZ UDPゴシック",
-    "Noto Sans JP",
-    sans-serif;
+  margin: 0;
+  background: #eef2f6;
 }
 
 button,
@@ -31,30 +38,36 @@ button {
 .app {
   width: 100%;
   min-height: 100vh;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  padding-bottom: 32px;
 }
 
 .app-header {
-  padding: 14px 16px 12px;
-  color: #111827;
-  background: #ffd400;
+  padding: 18px 20px 14px;
+  color: #10243d;
+  background:
+    linear-gradient(
+      135deg,
+      #ffd400 0%,
+      #ffe566 100%
+    );
   border-bottom: 4px solid #0758a5;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 12%);
 }
 
 .brand {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  max-width: 1100px;
+  gap: 14px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
 .times-logo {
   display: block;
-  width: 92px;
-  max-width: 28vw;
-  height: auto;
+  width: auto;
+  height: 50px;
+  object-fit: contain;
 }
 
 .brand-text {
@@ -63,95 +76,126 @@ button {
 
 .brand-japanese {
   margin-bottom: 2px;
-  color: #26354a;
-  font-size: 12px;
+  color: #2d4056;
+  font-size: 0.83rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-.brand-text h1 {
+.app-header h1 {
   margin: 0;
-  color: #063f7d;
-  font-size: clamp(20px, 5vw, 34px);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  color: #0758a5;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .subtitle {
-  margin: 10px 0 0;
-  color: #111827;
-  font-size: 15px;
+  margin: 9px 0 0;
+  color: #152a43;
+  font-size: 1rem;
   font-weight: 800;
   text-align: center;
 }
 
 .update-panel {
   position: relative;
-  width: min(1100px, calc(100% - 24px));
-  margin: 12px auto 0;
-  padding: 12px 90px 12px 14px;
-  color: #26354a;
+  max-width: 1180px;
+  margin: 14px auto 0;
+  padding: 13px 130px 13px 18px;
+  color: #263544;
   background: #ffffff;
-  border: 2px solid #cbd5e1;
-  border-radius: 12px;
-  box-shadow: 0 3px 10px rgb(15 23 42 / 8%);
+  border: 1px solid #d6dee7;
+  border-radius: 13px;
+  box-shadow: 0 3px 12px rgb(20 45 70 / 8%);
 }
 
 .update-panel p {
-  margin: 0;
-  line-height: 1.5;
+  margin: 2px 0;
+}
+
+.update-panel > p:first-child {
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .updated-time {
+  color: #172b43;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.relative-time {
+  margin-left: 4px;
+  color: #0758a5;
   font-weight: 800;
 }
 
 .update-panel.warning {
-  background: #fff5df;
+  background: #fff9e8;
   border-color: #e58a00;
 }
 
 .update-panel.danger {
-  background: #ffe8e8;
+  background: #fff0f0;
   border-color: #d52b2b;
 }
 
 .stale-message {
-  margin-top: 5px !important;
-  color: #a12424;
+  color: #b25400;
+  font-size: 0.86rem;
   font-weight: 800;
+}
+
+.update-panel.danger .stale-message {
+  color: #b1111b;
 }
 
 .update-button {
   position: absolute;
   top: 50%;
-  right: 12px;
-  min-width: 66px;
-  padding: 10px 12px;
+  right: 18px;
+  min-width: 92px;
+  min-height: 44px;
+  padding: 8px 16px;
   color: #ffffff;
   font-weight: 800;
   background: #0758a5;
   border: 0;
   border-radius: 9px;
+  box-shadow: 0 3px 7px rgb(7 88 165 / 24%);
   cursor: pointer;
   transform: translateY(-50%);
 }
 
+.update-button:hover {
+  background: #064985;
+}
+
 .update-button:disabled {
   cursor: wait;
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 .error-message {
-  margin-top: 6px !important;
-  color: #c52222;
-  font-weight: 800;
+  margin-top: 8px !important;
+  color: #b1111b;
+  font-weight: 900;
+}
+
+.fetch-error {
+  display: inline-block;
+  padding: 7px 10px;
+  color: #ffffff;
+  background: #d52b2b;
+  border-radius: 7px;
 }
 
 .status-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  width: min(1100px, calc(100% - 24px));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 1180px;
   margin: 12px auto 0;
 }
 
@@ -159,55 +203,64 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 58px;
-  padding: 8px;
+  gap: 9px;
+  min-height: 60px;
+  padding: 9px;
   color: #ffffff;
-  border: 2px solid;
   border-radius: 12px;
-  box-shadow: 0 3px 10px rgb(15 23 42 / 12%);
+  box-shadow: 0 3px 9px rgb(0 0 0 / 14%);
 }
 
 .summary-item span {
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .summary-item strong {
-  font-size: 27px;
+  font-size: 1.65rem;
   line-height: 1;
 }
 
 .summary-free {
   background: #0758a5;
-  border-color: #064986;
 }
 
 .summary-busy {
   background: #e58a00;
-  border-color: #c97900;
 }
 
 .summary-full {
   background: #d52b2b;
-  border-color: #b92121;
+}
+
+.summary-failed {
+  background: #626b75;
+}
+
+.status-summary:has(.summary-failed) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .sort-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  width: min(1100px, calc(100% - 24px));
-  margin: 10px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  max-width: 1180px;
+  margin: 12px auto 0;
+  padding: 11px;
+  background: #ffffff;
+  border: 1px solid #d6dee7;
+  border-radius: 12px;
 }
 
 .sort-button {
-  min-height: 46px;
-  padding: 9px 12px;
+  min-height: 42px;
+  padding: 8px 20px;
   color: #0758a5;
   font-weight: 800;
   background: #ffffff;
   border: 2px solid #0758a5;
-  border-radius: 10px;
+  border-radius: 9px;
   cursor: pointer;
 }
 
@@ -222,131 +275,192 @@ button {
 }
 
 .location-error {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: 8px 10px;
-  color: #a61f1f;
-  font-size: 13px;
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  color: #b1111b;
+  font-size: 0.88rem;
   font-weight: 800;
-  text-align: center;
-  background: #fff0f0;
-  border: 1px solid #d52b2b;
-  border-radius: 8px;
 }
 
 .content {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
-  gap: 14px;
+  grid-template-columns:
+    minmax(360px, 0.95fr)
+    minmax(480px, 1.25fr);
   align-items: start;
-  width: min(1200px, calc(100% - 24px));
+  gap: 16px;
+  width: min(1180px, calc(100% - 24px));
   margin: 14px auto 0;
 }
 
 .map-panel {
   position: sticky;
-  top: 8px;
+  top: 10px;
+  min-width: 0;
   overflow: hidden;
   background: #ffffff;
-  border: 2px solid #0758a5;
-  border-radius: 13px;
-  box-shadow: 0 5px 16px rgb(15 23 42 / 12%);
+  border: 1px solid #d2dce6;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgb(20 45 70 / 10%);
   scroll-margin-top: 10px;
 }
 
+.map-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  min-height: 56px;
+  padding: 9px 11px;
+  background: #f7f9fb;
+  border-bottom: 1px solid #d5dde6;
+}
+
 .selected-parking {
-  min-height: 48px;
-  padding: 13px 12px;
-  overflow: hidden;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 800;
-  text-align: center;
-  text-overflow: ellipsis;
+  min-width: 0;
+  color: #172b43;
+  font-size: 0.9rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.map-toggle-button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 7px 12px;
+  color: #0758a5;
+  font-size: 0.85rem;
+  font-weight: 900;
   white-space: nowrap;
+  background: #ffffff;
+  border: 2px solid #0758a5;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.map-toggle-button:hover {
+  color: #ffffff;
   background: #0758a5;
 }
 
 .parking-map {
   display: block;
   width: 100%;
-  height: min(67vh, 650px);
-  min-height: 460px;
+  height: 620px;
   border: 0;
 }
 
 .parking-list {
   display: grid;
-  gap: 10px;
+  gap: 11px;
+  min-width: 0;
 }
 
 .parking-card {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 74px;
-  gap: 10px;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   align-items: center;
-  min-height: 118px;
-  padding: 12px;
-  color: #172033;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px;
   background: #ffffff;
-  border: 2px solid #d5dce6;
+  border: 2px solid transparent;
   border-radius: 13px;
-  box-shadow: 0 4px 13px rgb(15 23 42 / 9%);
+  box-shadow: 0 3px 12px rgb(20 45 70 / 10%);
   cursor: pointer;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    opacity 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .parking-card:hover {
-  border-color: #2b78c5;
-  box-shadow: 0 6px 17px rgb(15 23 42 / 15%);
+  box-shadow: 0 6px 17px rgb(20 45 70 / 16%);
   transform: translateY(-1px);
 }
 
 .parking-card:focus-visible {
-  outline: 4px solid rgb(7 88 165 / 25%);
+  outline: 3px solid #ffd400;
   outline-offset: 2px;
 }
 
 .parking-card-selected {
-  background: #f3f8ff;
   border-color: #0758a5;
   box-shadow:
-    0 0 0 3px rgb(7 88 165 / 16%),
-    0 6px 17px rgb(15 23 42 / 15%);
+    0 0 0 3px rgb(7 88 165 / 13%),
+    0 5px 16px rgb(20 45 70 / 15%);
+}
+
+.parking-card-full {
+  opacity: 0.62;
+  background: #f4f5f6;
+}
+
+.parking-card-full:hover,
+.parking-card-full:focus-within,
+.parking-card-full.parking-card-selected {
+  opacity: 0.9;
+}
+
+.parking-card-failed {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #ffffff,
+      #ffffff 9px,
+      #f1f2f3 9px,
+      #f1f2f3 18px
+    );
+  border-color: #747d86;
 }
 
 .parking-card-changed {
-  animation: status-flash 1.2s ease-in-out 2;
+  position: relative;
+  border-color: #ffd400;
+  animation: changed-card-pulse 1.6s ease-in-out 4;
 }
 
-@keyframes status-flash {
+.parking-card-changed::before {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 3px 8px;
+  color: #172b43;
+  font-size: 0.7rem;
+  font-weight: 900;
+  content: "変化あり";
+  background: #ffd400;
+  border-radius: 999px;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 15%);
+}
+
+@keyframes changed-card-pulse {
   0%,
   100% {
-    background: #ffffff;
+    box-shadow: 0 3px 12px rgb(20 45 70 / 10%);
   }
 
   50% {
-    background: #fff4b8;
+    box-shadow:
+      0 0 0 5px rgb(255 212 0 / 30%),
+      0 7px 18px rgb(20 45 70 / 17%);
   }
 }
 
 .number-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 45px;
-  height: 45px;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
   color: #ffffff;
-  font-size: 23px;
+  font-size: 1.55rem;
   font-weight: 900;
-  line-height: 1;
   background: #0758a5;
-  border: 3px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #0758a5;
+  box-shadow:
+    inset 0 0 0 3px rgb(255 255 255 / 35%),
+    0 3px 8px rgb(7 88 165 / 25%);
 }
 
 .parking-information {
@@ -355,16 +469,43 @@ button {
 
 .parking-information h2 {
   margin: 0;
-  color: #172033;
-  font-size: 17px;
+  color: #172b43;
+  font-size: 1.04rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .distance {
   margin: 5px 0 8px;
-  color: #4a5870;
-  font-size: 13px;
+  color: #526273;
+  font-size: 0.85rem;
   font-weight: 700;
+}
+
+.status-change {
+  display: inline-block;
+  margin-top: 7px;
+  padding: 4px 8px;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  border-radius: 999px;
+}
+
+.change-good {
+  background: #0758a5;
+}
+
+.change-warning {
+  background: #e58a00;
+}
+
+.change-bad {
+  background: #d52b2b;
+}
+
+.change-unknown {
+  background: #626b75;
 }
 
 .parking-links {
@@ -377,18 +518,22 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 7px 11px;
-  font-size: 13px;
-  font-weight: 800;
+  min-height: 34px;
+  padding: 6px 11px;
+  font-size: 0.79rem;
+  font-weight: 900;
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: 7px;
 }
 
 .official-link {
-  color: #0758a5;
-  background: #edf6ff;
-  border: 1px solid #0758a5;
+  color: #684f00;
+  background: #ffd400;
+  border: 1px solid #d6b300;
+}
+
+.official-link:hover {
+  background: #ffe45c;
 }
 
 .map-link {
@@ -397,196 +542,211 @@ button {
   border: 1px solid #0758a5;
 }
 
+.map-link:hover {
+  background: #064985;
+}
+
 .parking-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 8px 5px;
+  display: grid;
+  place-items: center;
+  min-width: 74px;
+  min-height: 54px;
+  padding: 8px 10px;
   color: #ffffff;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 900;
+  text-align: center;
   border-radius: 10px;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 13%);
 }
 
 .status-free {
-  color: #ffffff;
   background: #0758a5;
 }
 
 .status-busy {
-  color: #ffffff;
   background: #e58a00;
 }
 
 .status-full {
-  color: #ffffff;
   background: #d52b2b;
 }
 
 .status-unknown {
-  color: #ffffff;
-  background: #697386;
-}
-
-.status-change {
-  display: inline-block;
-  margin-top: 5px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 900;
-  border-radius: 6px;
-}
-
-.change-good {
-  color: #ffffff;
-  background: #0758a5;
-}
-
-.change-warning {
-  color: #ffffff;
-  background: #e58a00;
-}
-
-.change-bad {
-  color: #ffffff;
-  background: #d52b2b;
-}
-
-.change-unknown {
-  color: #ffffff;
-  background: #697386;
+  background: #626b75;
 }
 
 .empty-message {
-  padding: 30px 15px;
-  color: #4a5870;
-  font-weight: 800;
+  margin: 0;
+  padding: 22px;
+  color: #b1111b;
+  font-weight: 900;
   text-align: center;
   background: #ffffff;
+  border: 2px solid #d52b2b;
   border-radius: 12px;
 }
 
-@media (max-width: 800px) {
-  .app-header {
-    padding: 10px 12px;
-  }
-
-  .times-logo {
-    width: 72px;
-  }
-
-  .brand {
-    gap: 9px;
-    justify-content: flex-start;
-  }
-
-  .brand-japanese {
-    font-size: 10px;
-  }
-
-  .brand-text h1 {
-    font-size: clamp(17px, 5.2vw, 24px);
-  }
-
-  .subtitle {
-    margin-top: 7px;
-    font-size: 13px;
+@media (max-width: 900px) {
+  .update-panel,
+  .status-summary,
+  .sort-panel {
+    width: calc(100% - 24px);
   }
 
   .content {
-    display: flex;
-    flex-direction: column;
-    width: calc(100% - 16px);
-    margin-top: 10px;
+    grid-template-columns: 1fr;
   }
 
   .map-panel {
     position: static;
-    width: 100%;
-    order: 1;
-  }
-
-  .parking-list {
-    width: 100%;
-    order: 2;
   }
 
   .parking-map {
-    height: 58vh;
-    min-height: 390px;
-  }
-
-  .update-panel,
-  .status-summary,
-  .sort-panel {
-    width: calc(100% - 16px);
-  }
-
-  .selected-parking {
-    min-height: 45px;
-    padding: 12px 8px;
-    font-size: 13px;
+    height: 430px;
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 600px) {
+  .app {
+    padding-bottom: 18px;
+  }
+
+  .app-header {
+    padding: 12px 10px 10px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .times-logo {
+    height: 39px;
+  }
+
+  .brand-japanese {
+    font-size: 0.68rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.08rem;
+  }
+
+  .subtitle {
+    margin-top: 7px;
+    font-size: 0.88rem;
+  }
+
   .update-panel {
-    padding: 10px 78px 10px 11px;
-    font-size: 12px;
+    padding: 12px;
+  }
+
+  .update-panel > p {
+    padding-right: 96px;
   }
 
   .update-button {
-    right: 9px;
-    min-width: 60px;
-    padding: 9px 8px;
-    font-size: 13px;
+    top: 13px;
+    right: 12px;
+    min-width: 82px;
+    min-height: 40px;
+    transform: none;
+  }
+
+  .updated-time {
+    margin-top: 7px !important;
+    font-size: 0.82rem;
+  }
+
+  .relative-time {
+    display: block;
+    margin: 2px 0 0;
+  }
+
+  .stale-message,
+  .error-message {
+    padding-right: 0 !important;
+  }
+
+  .status-summary {
+    gap: 6px;
+  }
+
+  .status-summary:has(.summary-failed) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .summary-item {
-    flex-direction: column;
-    gap: 2px;
-    min-height: 61px;
+    min-height: 53px;
+    gap: 6px;
+    padding: 7px 4px;
   }
 
   .summary-item span {
-    font-size: 12px;
+    font-size: 0.81rem;
   }
 
   .summary-item strong {
-    font-size: 25px;
+    font-size: 1.35rem;
+  }
+
+  .sort-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
   }
 
   .sort-button {
-    min-height: 43px;
-    font-size: 14px;
+    width: 100%;
+    padding: 7px 9px;
+  }
+
+  .location-error {
+    grid-column: 1 / -1;
+  }
+
+  .content {
+    width: calc(100% - 16px);
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .map-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .map-toggle-button {
+    width: 100%;
   }
 
   .parking-map {
-    height: 52vh;
-    min-height: 350px;
+    height: 365px;
+  }
+
+  .parking-list {
+    gap: 9px;
   }
 
   .parking-card {
-    grid-template-columns: 42px minmax(0, 1fr) 62px;
+    grid-template-columns: 45px minmax(0, 1fr) 65px;
     gap: 8px;
-    min-height: 110px;
-    padding: 10px 8px;
+    padding: 11px 8px;
   }
 
   .number-button {
-    width: 39px;
-    height: 39px;
-    font-size: 20px;
+    width: 43px;
+    height: 43px;
+    font-size: 1.25rem;
   }
 
   .parking-information h2 {
-    font-size: 15px;
+    font-size: 0.9rem;
   }
 
   .distance {
-    margin: 4px 0 7px;
-    font-size: 12px;
+    margin: 4px 0 6px;
+    font-size: 0.74rem;
   }
 
   .parking-links {
@@ -594,14 +754,60 @@ button {
   }
 
   .parking-links a {
-    min-height: 33px;
-    padding: 6px 8px;
-    font-size: 12px;
+    min-height: 31px;
+    padding: 5px 7px;
+    font-size: 0.71rem;
   }
 
   .parking-status {
-    min-height: 45px;
-    padding: 6px 3px;
-    font-size: 15px;
+    min-width: 63px;
+    min-height: 48px;
+    padding: 6px 4px;
+    font-size: 0.85rem;
+  }
+
+  .status-change {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .times-logo {
+    height: 34px;
+  }
+
+  .app-header h1 {
+    font-size: 0.96rem;
+  }
+
+  .parking-card {
+    grid-template-columns: 39px minmax(0, 1fr) 58px;
+    gap: 6px;
+    padding: 10px 6px;
+  }
+
+  .number-button {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+
+  .parking-status {
+    min-width: 56px;
+    font-size: 0.77rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+
+  .parking-card {
+    transition: none;
+  }
+
+  .parking-card-changed {
+    animation: none;
   }
 }
