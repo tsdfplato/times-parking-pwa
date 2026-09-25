@@ -7,22 +7,25 @@ export default defineConfig({
 
   plugins: [
     react(),
+
     VitePWA({
       registerType: 'autoUpdate',
 
       workbox: {
         globIgnores: ['**/status.json'],
+        cleanupOutdatedCaches: true,
       },
 
       manifest: {
         name: 'タイムズ Parking Information',
-        short_name: 'タイムズ満空',
-        description: '野田・吉野周辺のタイムズ駐車場 満空情報',
+        short_name: 'タイムズ Parking Information',
+        description: 'タイムズ駐車場 空車情報',
         theme_color: '#ffd400',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: './',
         scope: './',
+
         icons: [
           {
             src: 'times-icon.svg',
@@ -39,4 +42,3 @@ export default defineConfig({
     }),
   ],
 })
-

@@ -14,6 +14,25 @@ function getStatusClass(status) {
   return 'status-unknown'
 }
 
+function formatUpdatedAt(value) {
+  if (!value) return '取得中'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function App() {
   const [parks, setParks] = useState([])
   const [updatedAt, setUpdatedAt] = useState('')
@@ -29,7 +48,12 @@ function App() {
         `${import.meta.env.BASE_URL}status.json?t=${Date.now()}`
 
       const response = await fetch(url, {
+        method: 'GET',
         cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
       })
 
       if (!response.ok) {
@@ -39,7 +63,10 @@ function App() {
       const data = await response.json()
 
       setParks(Array.isArray(data.parks) ? data.parks : [])
-      setUpdatedAt(data.updatedAt || data.fetchedAt || '')
+
+      setUpdatedAt(
+        formatUpdatedAt(data.fetchedAt || data.updatedAt),
+      )
     } catch (fetchError) {
       console.error(fetchError)
       setError('満空情報を取得できませんでした')
@@ -53,7 +80,7 @@ function App() {
 
     const timer = window.setInterval(loadStatus, 60000)
 
-    const handleFocus = () => {
+    const reloadLatestStatus = () => {
       loadStatus()
     }
 
@@ -63,12 +90,26 @@ function App() {
       }
     }
 
-    window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', reloadLatestStatus)
+    window.addEventListener('pageshow', reloadLatestStatus)
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibility,
+    )
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .getRegistration()
+        .then((registration) => registration?.update())
+        .catch(() => {})
+    }
 
     return () => {
       window.clearInterval(timer)
-      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('focus', reloadLatestStatus)
+      window.removeEventListener('pageshow', reloadLatestStatus)
+
       document.removeEventListener(
         'visibilitychange',
         handleVisibility,
@@ -79,7 +120,10 @@ function App() {
   const scrollToMap = () => {
     document
       .getElementById('parking-map')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      ?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
   }
 
   return (
@@ -96,12 +140,13 @@ function App() {
             <div className="brand-japanese">
               タイムズの駐車場検索
             </div>
+
             <h1>タイムズ Parking Information</h1>
           </div>
         </div>
 
         <p className="subtitle">
-          野田・吉野周辺のタイムズ駐車場 満空情報
+          タイムズ駐車場　空車情報
         </p>
       </header>
 
@@ -121,7 +166,11 @@ function App() {
           {loading ? '更新中…' : '更新'}
         </button>
 
-        {error && <p className="error-message">{error}</p>}
+        {error && (
+          <p className="error-message">
+            {error}
+          </p>
+        )}
       </section>
 
       <main className="content">
@@ -133,7 +182,7 @@ function App() {
           <iframe
             className="parking-map"
             src={MAP_URL}
-            title="野田・吉野周辺タイムズ駐車場地図"
+            title="タイムズ駐車場地図"
             loading="eager"
             allowFullScreen
           />
@@ -148,9 +197,12 @@ function App() {
               `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(park.name)}`
 
             return (
-              <article className="parking-card" key={park.id}>
+              <article
+                className="parking-card"
+                key={park.id}
+              >
                 <button
-                  className={`number-button number-${park.no}`}
+                  className="number-button"
                   type="button"
                   onClick={scrollToMap}
                   aria-label={`地図の${park.no}番を確認`}
@@ -160,7 +212,10 @@ function App() {
 
                 <div className="parking-information">
                   <h2>{park.name}</h2>
-                  <p className="distance">{park.distance}</p>
+
+                  <p className="distance">
+                    {park.distance}
+                  </p>
 
                   <div className="parking-links">
                     <a
@@ -184,7 +239,9 @@ function App() {
                 </div>
 
                 <div
-                  className={`parking-status ${getStatusClass(park.status)}`}
+                  className={
+                    `parking-status ${getStatusClass(park.status)}`
+                  }
                 >
                   {park.status || '不明'}
                 </div>

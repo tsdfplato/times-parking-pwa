@@ -182,35 +182,12 @@ button {
   height: 46px;
   padding: 0;
   color: #ffffff;
+  background: #0288d1;
   border: 0;
   border-radius: 50%;
   font-size: 21px;
   font-weight: 900;
   box-shadow: 0 2px 5px rgb(0 0 0 / 25%);
-}
-
-.number-1 {
-  background: #d32f2f;
-}
-
-.number-2 {
-  background: #ef6c00;
-}
-
-.number-3 {
-  background: #2e7d32;
-}
-
-.number-4 {
-  background: #7b1fa2;
-}
-
-.number-5 {
-  background: #0288d1;
-}
-
-.number-6 {
-  background: #c2185b;
 }
 
 .parking-information {
