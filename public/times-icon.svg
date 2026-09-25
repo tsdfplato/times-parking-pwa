@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="88" fill="#ffd400"/>
+  <rect x="42" y="42" width="428" height="428" rx="58" fill="#1d1d1b"/>
+  <path d="M128 128h256v60H292v196h-72V188h-92z" fill="#ffd400"/>
+  <text x="256" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="#ffd400">PARKING</text>
+</svg>
