@@ -553,8 +553,13 @@ function App() {
   </p>
 
   <p className="update-description">
-    表示中の空車情報は、クラウドがタイムズ公式サイトから取得した最新情報です。通常は0～10分前の情報が表示されます。
-  </p>
+  <span>
+    空車情報はタイムズ公式サイトからクラウド経由で取得しています。
+  </span>
+  <span>
+    通常は0～10分前の情報が表示されます。
+  </span>
+</p>
 </section>
 
       <section className="status-summary">

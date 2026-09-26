@@ -1207,3 +1207,57 @@ button {
     border: 0;
   }
 }
+/* 更新説明文と横幅の最終修正 */
+@media (max-width: 600px) {
+  .update-panel,
+  .sort-panel,
+  .map-panel {
+    box-sizing: border-box;
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    margin-right: 12px;
+    margin-left: 12px;
+  }
+
+  .update-description {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border: 2px solid #087fbd;
+    border-radius: 10px;
+    background: #edf7ff;
+    color: #243746;
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: left;
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+
+  .update-description span {
+    display: block;
+    width: 100%;
+    white-space: normal;
+  }
+
+  .cloud-update-note,
+  .updated-time,
+  .relative-time,
+  .selected-parking,
+  .location-error,
+  .stale-message,
+  .error-message {
+    font-size: 11px;
+  }
+
+  .map-toggle-button {
+    box-sizing: border-box;
+    display: block;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    margin: 0 10px 10px;
+  }
+}
