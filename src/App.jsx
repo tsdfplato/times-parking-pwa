@@ -553,7 +553,7 @@ function App() {
   </p>
 
   <p className="update-description">
-  <span>空車情報はタイムズ公式サイトから取得。</span>
+  <span>空車情報は公式サイトから取得しています。</span>
   <span>通常は0～10分前の情報を表示します。</span>
 </p>
 </section>

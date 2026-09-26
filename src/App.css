@@ -1284,3 +1284,24 @@ button {
     overflow-wrap: anywhere;
   }
 }
+/* 説明文を必ず2行で表示 */
+@media (max-width: 600px) {
+  .update-description {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 8px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.55 !important;
+    text-align: center !important;
+    overflow: hidden !important;
+  }
+
+  .update-description span {
+    display: block !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    letter-spacing: -0.2px !important;
+  }
+}
