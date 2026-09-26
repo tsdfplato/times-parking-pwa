@@ -1261,3 +1261,26 @@ button {
     margin: 0 10px 10px;
   }
 }
+/* 説明文の改行・はみ出し修正 */
+@media (max-width: 600px) {
+  .update-description {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.55;
+    text-align: left;
+    word-break: normal;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .update-description span {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+}
