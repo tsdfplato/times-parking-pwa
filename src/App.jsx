@@ -501,75 +501,61 @@ function App() {
         </p>
       </header>
 
-      <section className={`update-panel ${staleLevel}`}>
-        <p className="update-description">
-          表示中の空車情報は、クラウドがタイムズ公式サイトから
-          取得した最新情報です。
-          通常は0～10分前の情報が表示されます。
-        </p>
+<section className={`update-panel ${staleLevel}`}>
+  <button
+    className="update-button"
+    type="button"
+    onClick={loadStatus}
+    disabled={loading}
+  >
+    {loading ? '更新中…' : '更新'}
+  </button>
 
-        <p className="updated-time">
-          公式最終更新：
-          {formatUpdatedAt(officialUpdatedAt)}
-        </p>
+  <p className="updated-time">
+    公式最終更新：
+    {formatUpdatedAt(officialUpdatedAt)}
+  </p>
 
-        <p className="relative-time">
-          （
-          {formatRelativeTime(
-            officialUpdatedAt,
-            currentTime,
-          )}
-          ）
-        </p>
+  <p className="relative-time">
+    （{formatRelativeTime(officialUpdatedAt, currentTime)}）
+  </p>
 
-        <p className="updated-time">
-          クラウド確認：
-          {formatUpdatedAt(cloudFetchedAt)}
-        </p>
+  <p className="updated-time">
+    クラウド確認：
+    {formatUpdatedAt(cloudFetchedAt)}
+  </p>
 
-        <p className="relative-time">
-          （
-          {formatRelativeTime(
-            cloudFetchedAt,
-            currentTime,
-          )}
-          ）
-        </p>
+  <p className="relative-time">
+    （{formatRelativeTime(cloudFetchedAt, currentTime)}）
+  </p>
 
-        {staleLevel === 'warning' && (
-          <p className="stale-message">
-            クラウド確認から
-            {cloudAgeMinutes}分経過しています
-          </p>
-        )}
+  {staleLevel === 'warning' && (
+    <p className="stale-message">
+      クラウド確認から{ageMinutes}分経過しています
+    </p>
+  )}
 
-        {staleLevel === 'danger' && (
-          <p className="stale-message">
-            情報が古い可能性があります
-            （クラウド確認から
-            {cloudAgeMinutes}分経過）
-          </p>
-        )}
+  {staleLevel === 'danger' && (
+    <p className="stale-message">
+      情報が古い可能性があります
+      （クラウド確認から{ageMinutes}分経過）
+    </p>
+  )}
 
-        <button
-          className="update-button"
-          type="button"
-          onClick={loadStatus}
-          disabled={loading}
-        >
-          {loading ? '更新中…' : '更新'}
-        </button>
+  {error && (
+    <p className="error-message">
+      {error}
+    </p>
+  )}
 
-        {error && (
-          <p className="error-message">
-            {error}
-          </p>
-        )}
+  <p className="cloud-update-note">
+    5分ごとにクラウドで自動更新
+  </p>
 
-        <p className="cloud-update-note">
-          5分ごとにクラウドで自動更新
-        </p>
-      </section>
+  <p className="update-description">
+    表示中の空車情報は、クラウドがタイムズ公式サイトから取得した最新情報です。通常は0～10分前の情報が表示されます。
+  </p>
+</section>
 
       <section className="status-summary">
         <div className="summary-item summary-free">
