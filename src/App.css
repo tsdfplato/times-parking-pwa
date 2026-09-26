@@ -811,3 +811,48 @@ button {
     animation: none;
   }
 }
+.update-description {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  color: #263746;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.7;
+  text-align: left;
+  background: #eef7ff;
+  border-left: 5px solid #0068b7;
+  border-radius: 10px;
+}
+
+.cloud-update-note {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  color: #52616d;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  border-top: 1px solid #d7e0e7;
+}
+
+.relative-time {
+  margin: 4px 0 16px;
+  color: #0068b7;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .update-description {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .cloud-update-note {
+    margin-top: 14px;
+    padding-top: 12px;
+    font-size: 13px;
+  }
+}

@@ -12,9 +12,7 @@ const MAP_URL =
 const TIMES_LOGO =
   'https://times-info.net/common/responsive/images/logo.png'
 
-const STATUS_STORAGE_KEY = 'times-parking-previous-status'
-const CHANGE_STORAGE_KEY = 'times-parking-status-changes'
-const CHANGE_DISPLAY_TIME = 10 * 60 * 1000
+const STORAGE_KEY = 'times-parking-previous-status'
 
 const STATUS_ORDER = {
   空車: 0,
@@ -64,15 +62,16 @@ function getChangeClass(status) {
   return 'change-unknown'
 }
 
-function parseUpdatedAt(value) {
+function parseDateValue(value) {
   if (!value) return null
 
-  const officialMatch = value.match(
-    /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/,
-  )
+  const officialFormat =
+    /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/
 
-  if (officialMatch) {
-    const [, year, month, day, hour, minute] = officialMatch
+  const match = value.match(officialFormat)
+
+  if (match) {
+    const [, year, month, day, hour, minute] = match
 
     const date = new Date(
       `${year}-${month}-${day}T${hour}:${minute}:00+09:00`,
@@ -89,18 +88,9 @@ function parseUpdatedAt(value) {
 function formatUpdatedAt(value) {
   if (!value) return '取得中'
 
-  const officialFormat =
-    /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/
+  const date = parseDateValue(value)
 
-  if (officialFormat.test(value)) {
-    return value
-  }
-
-  const date = parseUpdatedAt(value)
-
-  if (!date) {
-    return value
-  }
+  if (!date) return value
 
   return date.toLocaleString('ja-JP', {
     timeZone: 'Asia/Tokyo',
@@ -113,41 +103,33 @@ function formatUpdatedAt(value) {
 }
 
 function formatRelativeTime(value, currentTime) {
-  const date = parseUpdatedAt(value)
+  const date = parseDateValue(value)
 
   if (!date) return ''
 
-  const differenceMinutes = Math.max(
+  const difference = Math.max(
     0,
     Math.floor((currentTime - date.getTime()) / 60000),
   )
 
-  if (differenceMinutes === 0) {
-    return 'たった今'
-  }
+  if (difference === 0) return 'たった今'
+  if (difference === 1) return '1分前'
+  if (difference < 60) return `${difference}分前`
 
-  if (differenceMinutes < 60) {
-    return `${differenceMinutes}分前`
-  }
+  const hours = Math.floor(difference / 60)
 
-  const differenceHours = Math.floor(differenceMinutes / 60)
+  if (hours < 24) return `${hours}時間前`
 
-  if (differenceHours < 24) {
-    return `${differenceHours}時間前`
-  }
+  const days = Math.floor(hours / 24)
 
-  return `${Math.floor(differenceHours / 24)}日前`
+  return `${days}日前`
 }
 
-function loadStorage(key) {
+function loadPreviousStatuses() {
   try {
-    const saved = localStorage.getItem(key)
+    const saved = localStorage.getItem(STORAGE_KEY)
 
-    if (!saved) {
-      return {}
-    }
-
-    return JSON.parse(saved)
+    return saved ? JSON.parse(saved) : {}
   } catch {
     return {}
   }
@@ -179,9 +161,7 @@ function calculateDistance(
 }
 
 function formatDistance(distance) {
-  if (!Number.isFinite(distance)) {
-    return ''
-  }
+  if (!Number.isFinite(distance)) return ''
 
   if (distance < 1000) {
     return `現在地から約${Math.round(distance / 10) * 10}m`
@@ -203,7 +183,7 @@ function App() {
   const [locationLoading, setLocationLoading] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [selectedPark, setSelectedPark] = useState(null)
-  const [mapVisible, setMapVisible] = useState(true)
+  const [showMap, setShowMap] = useState(true)
 
   const loadStatus = useCallback(async () => {
     setLoading(true)
@@ -223,31 +203,18 @@ function App() {
       })
 
       if (!response.ok) {
-        throw new Error('満空情報を取得できませんでした')
+        throw new Error('空車情報を取得できませんでした')
       }
 
       const data = await response.json()
-      const nextParks =
-        Array.isArray(data.parks) ? data.parks : []
 
-      if (nextParks.length === 0) {
-        throw new Error('駐車場情報が空です')
-      }
+      const nextParks = Array.isArray(data.parks)
+        ? data.parks
+        : []
 
-      const previousStatuses = loadStorage(STATUS_STORAGE_KEY)
-      const savedChanges = loadStorage(CHANGE_STORAGE_KEY)
+      const previousStatuses = loadPreviousStatuses()
       const detectedChanges = {}
       const nextStatuses = {}
-      const now = Date.now()
-
-      Object.entries(savedChanges).forEach(([id, change]) => {
-        if (
-          change?.changedAt &&
-          now - change.changedAt < CHANGE_DISPLAY_TIME
-        ) {
-          detectedChanges[id] = change
-        }
-      })
 
       nextParks.forEach((park) => {
         nextStatuses[park.id] = park.status
@@ -261,19 +228,13 @@ function App() {
           detectedChanges[park.id] = {
             before: previousStatus,
             after: park.status,
-            changedAt: now,
           }
         }
       })
 
       localStorage.setItem(
-        STATUS_STORAGE_KEY,
+        STORAGE_KEY,
         JSON.stringify(nextStatuses),
-      )
-
-      localStorage.setItem(
-        CHANGE_STORAGE_KEY,
-        JSON.stringify(detectedChanges),
       )
 
       setParks(nextParks)
@@ -287,19 +248,14 @@ function App() {
         data.fetchedAt || data.updatedAt || '',
       )
 
-      setCurrentTime(now)
+      setCurrentTime(Date.now())
     } catch (fetchError) {
       console.error(fetchError)
-
-      setError(
-        parks.length > 0
-          ? '取得失敗：前回の情報を表示しています'
-          : '取得失敗：満空情報を取得できませんでした',
-      )
+      setError('空車情報を取得できませんでした')
     } finally {
       setLoading(false)
     }
-  }, [parks.length])
+  }, [])
 
   useEffect(() => {
     loadStatus()
@@ -310,29 +266,7 @@ function App() {
     )
 
     const clockTimer = window.setInterval(() => {
-      const now = Date.now()
-
-      setCurrentTime(now)
-
-      setChanges((currentChanges) => {
-        const activeChanges = {}
-
-        Object.entries(currentChanges).forEach(([id, change]) => {
-          if (
-            change?.changedAt &&
-            now - change.changedAt < CHANGE_DISPLAY_TIME
-          ) {
-            activeChanges[id] = change
-          }
-        })
-
-        localStorage.setItem(
-          CHANGE_STORAGE_KEY,
-          JSON.stringify(activeChanges),
-        )
-
-        return activeChanges
-      })
+      setCurrentTime(Date.now())
     }, 60000)
 
     const reloadLatestStatus = () => {
@@ -414,10 +348,12 @@ function App() {
       .sort((parkA, parkB) => {
         if (sortMode === 'location') {
           const distanceA =
-            parkA.currentDistance ?? Number.MAX_SAFE_INTEGER
+            parkA.currentDistance ??
+            Number.MAX_SAFE_INTEGER
 
           const distanceB =
-            parkB.currentDistance ?? Number.MAX_SAFE_INTEGER
+            parkB.currentDistance ??
+            Number.MAX_SAFE_INTEGER
 
           if (distanceA !== distanceB) {
             return distanceA - distanceB
@@ -427,10 +363,12 @@ function App() {
         }
 
         const orderA =
-          STATUS_ORDER[parkA.status] ?? STATUS_ORDER.不明
+          STATUS_ORDER[parkA.status] ??
+          STATUS_ORDER.不明
 
         const orderB =
-          STATUS_ORDER[parkB.status] ?? STATUS_ORDER.不明
+          STATUS_ORDER[parkB.status] ??
+          STATUS_ORDER.不明
 
         if (orderA !== orderB) {
           return orderA - orderB
@@ -450,11 +388,6 @@ function App() {
         if (park.status === '空車') counts.free += 1
         if (park.status === '混雑') counts.busy += 1
         if (park.status === '満車') counts.full += 1
-        if (
-          !['空車', '混雑', '満車'].includes(park.status)
-        ) {
-          counts.failed += 1
-        }
 
         return counts
       },
@@ -462,43 +395,34 @@ function App() {
         free: 0,
         busy: 0,
         full: 0,
-        failed: 0,
       },
     )
   }, [parks])
 
-  const ageMinutes = useMemo(() => {
-    if (!cloudFetchedAt) return null
+  const cloudAgeMinutes = useMemo(() => {
+    const fetchedDate = parseDateValue(cloudFetchedAt)
 
-    const fetchedTime = parseUpdatedAt(cloudFetchedAt)?.getTime()
-
-    if (!fetchedTime) return null
+    if (!fetchedDate) return null
 
     return Math.max(
       0,
-      Math.floor((currentTime - fetchedTime) / 60000),
+      Math.floor(
+        (currentTime - fetchedDate.getTime()) / 60000,
+      ),
     )
   }, [cloudFetchedAt, currentTime])
 
   const staleLevel = useMemo(() => {
-    if (ageMinutes === null) return ''
-
-    if (ageMinutes >= 30) return 'danger'
-    if (ageMinutes >= 10) return 'warning'
+    if (cloudAgeMinutes === null) return ''
+    if (cloudAgeMinutes >= 30) return 'danger'
+    if (cloudAgeMinutes >= 10) return 'warning'
 
     return ''
-  }, [ageMinutes])
-
-  const relativeUpdatedAt = useMemo(() => {
-    return formatRelativeTime(
-      officialUpdatedAt,
-      currentTime,
-    )
-  }, [officialUpdatedAt, currentTime])
+  }, [cloudAgeMinutes])
 
   const scrollToMap = (park) => {
     setSelectedPark(park)
-    setMapVisible(true)
+    setShowMap(true)
 
     window.setTimeout(() => {
       document
@@ -507,7 +431,7 @@ function App() {
           behavior: 'smooth',
           block: 'start',
         })
-    }, 100)
+    }, 50)
   }
 
   const selectStatusSort = () => {
@@ -578,43 +502,52 @@ function App() {
       </header>
 
       <section className={`update-panel ${staleLevel}`}>
-        <p>5分ごとにクラウドで自動更新</p>
+        <p className="update-description">
+          表示中の空車情報は、クラウドがタイムズ公式サイトから
+          取得した最新情報です。
+          通常は0～10分前の情報が表示されます。
+        </p>
 
-               <p className="updated-time">
+        <p className="updated-time">
           公式最終更新：
           {formatUpdatedAt(officialUpdatedAt)}
-          {relativeUpdatedAt && (
-            <span className="relative-time">
-              （{relativeUpdatedAt}）
-            </span>
+        </p>
+
+        <p className="relative-time">
+          （
+          {formatRelativeTime(
+            officialUpdatedAt,
+            currentTime,
           )}
+          ）
         </p>
 
         <p className="updated-time">
           クラウド確認：
           {formatUpdatedAt(cloudFetchedAt)}
-          {cloudFetchedAt && (
-            <span className="relative-time">
-              （
-              {formatRelativeTime(
-                cloudFetchedAt,
-                currentTime,
-              )}
-              ）
-            </span>
+        </p>
+
+        <p className="relative-time">
+          （
+          {formatRelativeTime(
+            cloudFetchedAt,
+            currentTime,
           )}
+          ）
         </p>
 
         {staleLevel === 'warning' && (
           <p className="stale-message">
-            クラウド取得から{ageMinutes}分経過しています
+            クラウド確認から
+            {cloudAgeMinutes}分経過しています
           </p>
         )}
 
         {staleLevel === 'danger' && (
           <p className="stale-message">
             情報が古い可能性があります
-            （クラウド取得から{ageMinutes}分経過）
+            （クラウド確認から
+            {cloudAgeMinutes}分経過）
           </p>
         )}
 
@@ -628,10 +561,14 @@ function App() {
         </button>
 
         {error && (
-          <p className="error-message fetch-error">
+          <p className="error-message">
             {error}
           </p>
         )}
+
+        <p className="cloud-update-note">
+          5分ごとにクラウドで自動更新
+        </p>
       </section>
 
       <section className="status-summary">
@@ -649,13 +586,6 @@ function App() {
           <span>満車</span>
           <strong>{statusCounts.full}</strong>
         </div>
-
-        {statusCounts.failed > 0 && (
-          <div className="summary-item summary-failed">
-            <span>取得失敗</span>
-            <strong>{statusCounts.failed}</strong>
-          </div>
-        )}
       </section>
 
       <section className="sort-panel">
@@ -681,7 +611,9 @@ function App() {
           onClick={selectLocationSort}
           disabled={locationLoading}
         >
-          {locationLoading ? '現在地取得中…' : '現在地順'}
+          {locationLoading
+            ? '現在地取得中…'
+            : '現在地順'}
         </button>
 
         {locationError && (
@@ -697,24 +629,21 @@ function App() {
           className="map-panel"
           aria-label="駐車場地図"
         >
-          <div className="map-heading">
-            <div className="selected-parking">
-              {selectedPark
-                ? `選択中：${selectedPark.no}番　${selectedPark.name}`
-                : '駐車場カードを押すと選択番号を表示します'}
-            </div>
-
-            <button
-              className="map-toggle-button"
-              type="button"
-              onClick={() => setMapVisible((visible) => !visible)}
-              aria-expanded={mapVisible}
-            >
-              {mapVisible ? '地図を隠す' : '地図を表示'}
-            </button>
+          <div className="selected-parking">
+            {selectedPark
+              ? `選択中：${selectedPark.no}番　${selectedPark.name}`
+              : '駐車場カードを押すと選択番号を表示します'}
           </div>
 
-          {mapVisible && (
+          <button
+            className="map-toggle-button"
+            type="button"
+            onClick={() => setShowMap((current) => !current)}
+          >
+            {showMap ? '地図を隠す' : '地図を表示'}
+          </button>
+
+          {showMap && (
             <iframe
               className="parking-map"
               src={MAP_URL}
@@ -737,29 +666,20 @@ function App() {
               `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`
 
             const change = changes[park.id]
+
             const isSelected =
               selectedPark?.id === park.id
-
-            const isFull = park.status === '満車'
-
-            const acquisitionFailed =
-              !['空車', '混雑', '満車'].includes(park.status)
-
-            const displayedStatus =
-              acquisitionFailed ? '取得失敗' : park.status
 
             return (
               <article
                 className={
                   `parking-card ${
-                    change ? 'parking-card-changed' : ''
+                    change
+                      ? 'parking-card-changed'
+                      : ''
                   } ${
-                    isSelected ? 'parking-card-selected' : ''
-                  } ${
-                    isFull ? 'parking-card-full' : ''
-                  } ${
-                    acquisitionFailed
-                      ? 'parking-card-failed'
+                    isSelected
+                      ? 'parking-card-selected'
                       : ''
                   }`
                 }
@@ -776,7 +696,9 @@ function App() {
                 }}
                 role="button"
                 tabIndex="0"
-                aria-label={`${park.no}番 ${park.name}を地図で確認`}
+                aria-label={
+                  `${park.no}番 ${park.name}を地図で確認`
+                }
               >
                 <div className="number-button">
                   {park.no}
@@ -791,14 +713,16 @@ function App() {
                         `status-change ${getChangeClass(change.after)}`
                       }
                     >
-                      変化あり：{change.before} → {change.after}
+                      {change.before} → {change.after}
                     </div>
                   )}
 
                   <p className="distance">
                     {sortMode === 'location' &&
                     park.currentDistance !== null
-                      ? formatDistance(park.currentDistance)
+                      ? formatDistance(
+                          park.currentDistance,
+                        )
                       : park.distance}
                   </p>
 
@@ -834,7 +758,7 @@ function App() {
                     `parking-status ${getStatusClass(park.status)}`
                   }
                 >
-                  {displayedStatus}
+                  {park.status || '不明'}
                 </div>
               </article>
             )
@@ -842,7 +766,7 @@ function App() {
 
           {!loading && parks.length === 0 && (
             <p className="empty-message">
-              取得失敗：駐車場情報を表示できません
+              駐車場の空車情報がありません
             </p>
           )}
         </section>
