@@ -183,7 +183,7 @@ function App() {
   const [locationLoading, setLocationLoading] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [selectedPark, setSelectedPark] = useState(null)
-  const [showMap, setShowMap] = useState(true)
+  const [showMap, setShowMap] = useState(false)
 
   const loadStatus = useCallback(async () => {
     setLoading(true)
