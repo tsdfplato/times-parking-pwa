@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
 
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
 
       workbox: {
         globIgnores: ['**/status.json'],
