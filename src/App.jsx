@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import './App.css'
 
@@ -13,6 +19,15 @@ const STATUS_STORAGE_KEY = 'times-parking-previous-status'
 const CHANGE_STORAGE_KEY = 'times-parking-status-changes'
 const CHANGE_DISPLAY_MS = 10 * 60 * 1000
 const CLOUD_STOP_MINUTES = 15
+const WEEKDAYS = [
+  { value: 1, label: '月' },
+  { value: 2, label: '火' },
+  { value: 3, label: '水' },
+  { value: 4, label: '木' },
+  { value: 5, label: '金' },
+  { value: 6, label: '土' },
+  { value: 0, label: '日' },
+]
 
 function getStatusClass(status) {
   if (status === '空車') return 'status-free'
@@ -94,6 +109,23 @@ function formatScheduleDate(value) {
   }).format(date)
 }
 
+function formatRepeat(schedule) {
+  const repeat = schedule?.repeat
+  if (!repeat || repeat.type === 'none') return '1回のみ'
+  if (repeat.type === 'daily') return '毎日'
+  if (repeat.type === 'weekdays') return '平日（月～金）'
+  if (repeat.type === 'interval') {
+    return `${repeat.intervalHours || 1}時間ごと`
+  }
+  if (repeat.type === 'weekly') {
+    const labels = WEEKDAYS.filter((day) =>
+      repeat.weekdays?.includes(day.value),
+    ).map((day) => day.label)
+    return labels.length ? `毎週 ${labels.join('・')}` : '毎週'
+  }
+  return '1回のみ'
+}
+
 function getInitialScheduleDate() {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Tokyo',
@@ -129,6 +161,9 @@ function App() {
   const [showSchedulePanel, setShowSchedulePanel] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(getInitialScheduleDate)
   const [scheduleTime, setScheduleTime] = useState('08:00')
+  const [repeatType, setRepeatType] = useState('none')
+  const [repeatWeekdays, setRepeatWeekdays] = useState([])
+  const [intervalHours, setIntervalHours] = useState(1)
   const [selectedParkIds, setSelectedParkIds] = useState([])
   const [schedules, setSchedules] = useState([])
   const [scheduleLoading, setScheduleLoading] = useState(false)
@@ -138,6 +173,10 @@ function App() {
     localStorage.getItem(API_TOKEN_STORAGE_KEY) || '',
   )
   const [tokenInput, setTokenInput] = useState('')
+  const dateInputRef = useRef(null)
+  const timeDialogRef = useRef(null)
+  const [draftHour, setDraftHour] = useState('08')
+  const [draftMinute, setDraftMinute] = useState('00')
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -375,6 +414,33 @@ function App() {
     )
   }
 
+  const openDatePicker = () => {
+    const input = dateInputRef.current
+    if (!input) return
+    if (typeof input.showPicker === 'function') input.showPicker()
+    else input.focus()
+  }
+
+  const openTimePicker = () => {
+    const [hour = '08', minute = '00'] = scheduleTime.split(':')
+    setDraftHour(hour)
+    setDraftMinute(minute)
+    timeDialogRef.current?.showModal()
+  }
+
+  const confirmTimePicker = () => {
+    setScheduleTime(`${draftHour}:${draftMinute}`)
+    timeDialogRef.current?.close()
+  }
+
+  const toggleRepeatWeekday = (weekday) => {
+    setRepeatWeekdays((current) =>
+      current.includes(weekday)
+        ? current.filter((day) => day !== weekday)
+        : [...current, weekday],
+    )
+  }
+
   const saveNotifierToken = (event) => {
     event.preventDefault()
     const nextToken = tokenInput.trim()
@@ -419,6 +485,12 @@ function App() {
       return
     }
 
+
+    if (repeatType === 'weekly' && repeatWeekdays.length === 0) {
+      setScheduleError('繰り返す曜日を1つ以上選んでください')
+      return
+    }
+
     const notifyAt = new Date(
       `${scheduleDate}T${scheduleTime}:00+09:00`,
     )
@@ -440,6 +512,13 @@ function App() {
         body: JSON.stringify({
           notifyAt: notifyAt.toISOString(),
           parkIds: selectedParkIds,
+          repeat: {
+            type: repeatType,
+            weekdays:
+              repeatType === 'weekly' ? repeatWeekdays : [],
+            intervalHours:
+              repeatType === 'interval' ? Number(intervalHours) : null,
+          },
         }),
       })
       const data = await response.json()
@@ -672,28 +751,90 @@ function App() {
                 <div className="schedule-datetime">
                   <label>
                     日付
-                    <input
-                      type="date"
-                      value={scheduleDate}
-                      min={getInitialScheduleDate()}
-                      onChange={(event) =>
-                        setScheduleDate(event.target.value)
-                      }
-                      required
-                    />
+                    <span className="schedule-picker-field">
+                      <input
+                        ref={dateInputRef}
+                        type="date"
+                        value={scheduleDate}
+                        min={getInitialScheduleDate()}
+                        onChange={(event) =>
+                          setScheduleDate(event.target.value)
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="schedule-picker-button"
+                        onClick={openDatePicker}
+                        aria-label="カレンダーを開く"
+                      >
+                        📅
+                      </button>
+                    </span>
                   </label>
                   <label>
                     時刻
-                    <input
-                      type="time"
-                      value={scheduleTime}
-                      onChange={(event) =>
-                        setScheduleTime(event.target.value)
-                      }
-                      required
-                    />
+                    <button
+                      type="button"
+                      className="schedule-time-button"
+                      onClick={openTimePicker}
+                    >
+                      <span>{scheduleTime}</span>
+                      <span aria-hidden="true">🕒</span>
+                    </button>
                   </label>
                 </div>
+
+                <fieldset className="schedule-repeat">
+                  <legend>繰り返し</legend>
+                  <select
+                    value={repeatType}
+                    onChange={(event) => setRepeatType(event.target.value)}
+                  >
+                    <option value="none">1回のみ</option>
+                    <option value="daily">毎日</option>
+                    <option value="weekdays">平日（月～金）</option>
+                    <option value="weekly">曜日を指定</option>
+                    <option value="interval">時間ごと</option>
+                  </select>
+
+                  {repeatType === 'weekly' && (
+                    <div className="weekday-selector">
+                      {WEEKDAYS.map((day) => (
+                        <button
+                          type="button"
+                          key={day.value}
+                          className={
+                            repeatWeekdays.includes(day.value)
+                              ? 'selected'
+                              : ''
+                          }
+                          onClick={() => toggleRepeatWeekday(day.value)}
+                          aria-pressed={repeatWeekdays.includes(day.value)}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {repeatType === 'interval' && (
+                    <label className="interval-selector">
+                      <select
+                        value={intervalHours}
+                        onChange={(event) =>
+                          setIntervalHours(event.target.value)
+                        }
+                      >
+                        {[1, 2, 3, 4, 6, 8, 12, 24].map((hours) => (
+                          <option value={hours} key={hours}>
+                            {hours}時間ごと
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </fieldset>
 
                 <fieldset className="schedule-parks">
                   <legend>通知する駐車場（複数選択可）</legend>
@@ -747,6 +888,9 @@ function App() {
                             <strong>
                               {formatScheduleDate(schedule.notifyAt)}
                             </strong>
+                            <p className="schedule-repeat-label">
+                              🔁 {formatRepeat(schedule)}
+                            </p>
                             <p>
                               {getScheduleParkNames(schedule.parkIds)}
                             </p>
@@ -782,6 +926,52 @@ function App() {
           )}
         </section>
       )}
+
+      <dialog className="time-picker-dialog" ref={timeDialogRef}>
+        <form method="dialog" onSubmit={(event) => event.preventDefault()}>
+          <h2>通知時刻を選択</h2>
+          <div className="time-selectors">
+            <label>
+              時
+              <select
+                value={draftHour}
+                onChange={(event) => setDraftHour(event.target.value)}
+              >
+                {Array.from({ length: 24 }, (_, hour) =>
+                  String(hour).padStart(2, '0'),
+                ).map((hour) => (
+                  <option value={hour} key={hour}>{hour}</option>
+                ))}
+              </select>
+            </label>
+            <span>:</span>
+            <label>
+              分
+              <select
+                value={draftMinute}
+                onChange={(event) => setDraftMinute(event.target.value)}
+              >
+                {Array.from({ length: 60 }, (_, minute) =>
+                  String(minute).padStart(2, '0'),
+                ).map((minute) => (
+                  <option value={minute} key={minute}>{minute}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="time-picker-actions">
+            <button
+              type="button"
+              onClick={() => timeDialogRef.current?.close()}
+            >
+              キャンセル
+            </button>
+            <button type="button" onClick={confirmTimePicker}>
+              設定
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       <main className="content">
         <section id="parking-map" className="map-panel">
