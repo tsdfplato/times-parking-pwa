@@ -2,8 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import './App.css'
 
-const MAP_URL = 'https://www.google.com/maps/d/u/0/embed?mid=1sXRW3-SgAC1gtUy8siwDWRTeKiKGfTA&ehbc=2E312F'
-const TIMES_LOGO = 'https://times-info.net/common/responsive/images/logo.png'
+const MAP_URL =
+  'https://www.google.com/maps/d/u/0/embed?mid=1sXRW3-SgAC1gtUy8siwDWRTeKiKGfTA&ehbc=2E312F'
+const TIMES_LOGO =
+  'https://times-info.net/common/responsive/images/logo.png'
+const NOTIFIER_URL =
+  'https://times-parking-notifier.kubota-mlc.workers.dev'
+const API_TOKEN_STORAGE_KEY = 'times-parking-notifier-api-token'
 const STATUS_STORAGE_KEY = 'times-parking-previous-status'
 const CHANGE_STORAGE_KEY = 'times-parking-status-changes'
 const CHANGE_DISPLAY_MS = 10 * 60 * 1000
@@ -25,12 +30,19 @@ function getChangeClass(status) {
 
 function parseDateValue(value) {
   if (!value) return null
-  const match = value.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/)
+
+  const match = value.match(
+    /^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/,
+  )
+
   if (match) {
     const [, year, month, day, hour, minute] = match
-    const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00+09:00`)
+    const date = new Date(
+      `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00+09:00`,
+    )
     return Number.isNaN(date.getTime()) ? null : date
   }
+
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
 }
@@ -38,21 +50,58 @@ function parseDateValue(value) {
 function formatUpdatedAt(value) {
   const date = parseDateValue(value)
   if (!date) return value || '取得中'
+
   return date.toLocaleString('ja-JP', {
-    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
 function formatRelativeTime(value, currentTime) {
   const date = parseDateValue(value)
   if (!date) return ''
-  const minutes = Math.max(0, Math.floor((currentTime - date.getTime()) / 60000))
+
+  const minutes = Math.max(
+    0,
+    Math.floor((currentTime - date.getTime()) / 60000),
+  )
+
   if (minutes === 0) return 'たった今'
   if (minutes === 1) return '1分前'
   if (minutes < 60) return `${minutes}分前`
+
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}時間前`
   return `${Math.floor(hours / 24)}日前`
+}
+
+function formatScheduleDate(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function getInitialScheduleDate() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  return formatter.format(new Date())
 }
 
 function loadStoredObject(key) {
@@ -76,22 +125,53 @@ function App() {
   const [selectedPark, setSelectedPark] = useState(null)
   const [showMap, setShowMap] = useState(false)
   const [installPrompt, setInstallPrompt] = useState(null)
+  const [isGalaxyView, setIsGalaxyView] = useState(false)
+  const [showSchedulePanel, setShowSchedulePanel] = useState(false)
+  const [scheduleDate, setScheduleDate] = useState(getInitialScheduleDate)
+  const [scheduleTime, setScheduleTime] = useState('08:00')
+  const [selectedParkIds, setSelectedParkIds] = useState([])
+  const [schedules, setSchedules] = useState([])
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [scheduleMessage, setScheduleMessage] = useState('')
+  const [scheduleError, setScheduleError] = useState('')
+  const [notifierToken, setNotifierToken] = useState(() =>
+    localStorage.getItem(API_TOKEN_STORAGE_KEY) || '',
+  )
+  const [tokenInput, setTokenInput] = useState('')
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW()
 
+  const notifierHeaders = useMemo(
+    () => ({
+      'X-API-Token': notifierToken,
+      'Content-Type': 'application/json; charset=utf-8',
+    }),
+    [notifierToken],
+  )
+
   const loadStatus = useCallback(async (manual = false) => {
     setLoading(true)
     setError('')
     if (manual) setSuccessMessage('')
+
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}status.json?t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-      })
-      if (!response.ok) throw new Error('空車情報を取得できませんでした')
+      const response = await fetch(
+        `${import.meta.env.BASE_URL}status.json?t=${Date.now()}`,
+        {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache',
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error('空車情報を取得できませんでした')
+      }
 
       const data = await response.json()
       const nextParks = Array.isArray(data.parks) ? data.parks : []
@@ -102,23 +182,42 @@ function App() {
       const nextChanges = {}
 
       Object.entries(storedChanges).forEach(([id, change]) => {
-        if (change?.detectedAt && now - change.detectedAt < CHANGE_DISPLAY_MS) nextChanges[id] = change
-      })
-      nextParks.forEach((park) => {
-        const previousStatus = previousStatuses[park.id]
-        nextStatuses[park.id] = park.status
-        if (previousStatus && previousStatus !== park.status) {
-          nextChanges[park.id] = { before: previousStatus, after: park.status, detectedAt: now }
+        if (
+          change?.detectedAt &&
+          now - change.detectedAt < CHANGE_DISPLAY_MS
+        ) {
+          nextChanges[id] = change
         }
       })
 
-      localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(nextStatuses))
-      localStorage.setItem(CHANGE_STORAGE_KEY, JSON.stringify(nextChanges))
+      nextParks.forEach((park) => {
+        const previousStatus = previousStatuses[park.id]
+        nextStatuses[park.id] = park.status
+
+        if (previousStatus && previousStatus !== park.status) {
+          nextChanges[park.id] = {
+            before: previousStatus,
+            after: park.status,
+            detectedAt: now,
+          }
+        }
+      })
+
+      localStorage.setItem(
+        STATUS_STORAGE_KEY,
+        JSON.stringify(nextStatuses),
+      )
+      localStorage.setItem(
+        CHANGE_STORAGE_KEY,
+        JSON.stringify(nextChanges),
+      )
+
       setParks(nextParks)
       setChanges(nextChanges)
       setOfficialUpdatedAt(data.updatedAt || data.fetchedAt || '')
       setCloudFetchedAt(data.fetchedAt || data.updatedAt || '')
       setCurrentTime(now)
+
       if (manual) {
         setSuccessMessage('最新データを確認しました')
         window.setTimeout(() => setSuccessMessage(''), 4000)
@@ -131,61 +230,283 @@ function App() {
     }
   }, [])
 
+  const loadSchedules = useCallback(async () => {
+    setScheduleLoading(true)
+    setScheduleError('')
+
+    try {
+      const response = await fetch(`${NOTIFIER_URL}/schedules`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: notifierHeaders,
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || '通知予定を取得できませんでした')
+      }
+
+      setSchedules(
+        Array.isArray(data.schedules)
+          ? [...data.schedules].sort(
+              (a, b) => new Date(a.notifyAt) - new Date(b.notifyAt),
+            )
+          : [],
+      )
+    } catch (fetchError) {
+      console.error(fetchError)
+      setScheduleError('通知予定を取得できませんでした')
+    } finally {
+      setScheduleLoading(false)
+    }
+  }, [notifierHeaders])
+
   useEffect(() => {
+    const userAgent = navigator.userAgent || ''
+    setIsGalaxyView(/Android/i.test(userAgent))
+
     const initialLoadTimer = window.setTimeout(() => loadStatus(), 0)
     const statusTimer = window.setInterval(() => loadStatus(), 60000)
     const clockTimer = window.setInterval(() => {
       const now = Date.now()
       setCurrentTime(now)
       setChanges((currentChanges) => {
-        const activeChanges = Object.fromEntries(Object.entries(currentChanges).filter(([, change]) => now - change.detectedAt < CHANGE_DISPLAY_MS))
-        localStorage.setItem(CHANGE_STORAGE_KEY, JSON.stringify(activeChanges))
+        const activeChanges = Object.fromEntries(
+          Object.entries(currentChanges).filter(
+            ([, change]) => now - change.detectedAt < CHANGE_DISPLAY_MS,
+          ),
+        )
+        localStorage.setItem(
+          CHANGE_STORAGE_KEY,
+          JSON.stringify(activeChanges),
+        )
         return activeChanges
       })
     }, 60000)
-    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') loadStatus() }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') loadStatus()
+    }
     const refreshOnReturn = () => loadStatus()
-    const captureInstallPrompt = (event) => { event.preventDefault(); setInstallPrompt(event) }
+    const captureInstallPrompt = (event) => {
+      event.preventDefault()
+      setInstallPrompt(event)
+    }
+
     window.addEventListener('focus', refreshOnReturn)
     window.addEventListener('pageshow', refreshOnReturn)
     window.addEventListener('beforeinstallprompt', captureInstallPrompt)
     document.addEventListener('visibilitychange', refreshWhenVisible)
+
     return () => {
       window.clearTimeout(initialLoadTimer)
       window.clearInterval(statusTimer)
       window.clearInterval(clockTimer)
       window.removeEventListener('focus', refreshOnReturn)
       window.removeEventListener('pageshow', refreshOnReturn)
-      window.removeEventListener('beforeinstallprompt', captureInstallPrompt)
-      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      window.removeEventListener(
+        'beforeinstallprompt',
+        captureInstallPrompt,
+      )
+      document.removeEventListener(
+        'visibilitychange',
+        refreshWhenVisible,
+      )
     }
   }, [loadStatus])
 
-  const sortedParks = useMemo(() => [...parks].sort((a, b) => a.no - b.no), [parks])
-  const statusCounts = useMemo(() => parks.reduce((counts, park) => {
-    if (park.status === '空車') counts.free += 1
-    if (park.status === '混雑') counts.busy += 1
-    if (park.status === '満車') counts.full += 1
-    return counts
-  }, { free: 0, busy: 0, full: 0 }), [parks])
+  useEffect(() => {
+    if (isGalaxyView && notifierToken) loadSchedules()
+  }, [isGalaxyView, notifierToken, loadSchedules])
+
+  const sortedParks = useMemo(
+    () => [...parks].sort((a, b) => a.no - b.no),
+    [parks],
+  )
+
+  const statusCounts = useMemo(
+    () =>
+      parks.reduce(
+        (counts, park) => {
+          if (park.status === '空車') counts.free += 1
+          if (park.status === '混雑') counts.busy += 1
+          if (park.status === '満車') counts.full += 1
+          return counts
+        },
+        { free: 0, busy: 0, full: 0 },
+      ),
+    [parks],
+  )
 
   const cloudAgeMinutes = useMemo(() => {
     const fetchedDate = parseDateValue(cloudFetchedAt)
     if (!fetchedDate) return null
-    return Math.max(0, Math.floor((currentTime - fetchedDate.getTime()) / 60000))
+    return Math.max(
+      0,
+      Math.floor((currentTime - fetchedDate.getTime()) / 60000),
+    )
   }, [cloudFetchedAt, currentTime])
-  const updateStopped = cloudAgeMinutes !== null && cloudAgeMinutes >= CLOUD_STOP_MINUTES
+
+  const updateStopped =
+    cloudAgeMinutes !== null && cloudAgeMinutes >= CLOUD_STOP_MINUTES
 
   const selectPark = (park) => {
     setSelectedPark(park)
     setShowMap(true)
-    window.setTimeout(() => document.getElementById('parking-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    window.setTimeout(() => {
+      document.getElementById('parking-map')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 50)
   }
 
   const installApp = async () => {
     if (!installPrompt) return
     await installPrompt.prompt()
     setInstallPrompt(null)
+  }
+
+  const toggleSchedulePark = (parkId) => {
+    setSelectedParkIds((current) =>
+      current.includes(parkId)
+        ? current.filter((id) => id !== parkId)
+        : [...current, parkId],
+    )
+  }
+
+  const saveNotifierToken = (event) => {
+    event.preventDefault()
+    const nextToken = tokenInput.trim()
+
+    if (!nextToken) {
+      setScheduleError('APIトークンを入力してください')
+      return
+    }
+
+    localStorage.setItem(API_TOKEN_STORAGE_KEY, nextToken)
+    setNotifierToken(nextToken)
+    setTokenInput('')
+    setScheduleError('')
+    setScheduleMessage('APIトークンをGalaxyに保存しました')
+    window.setTimeout(() => setScheduleMessage(''), 4000)
+  }
+
+  const clearNotifierToken = () => {
+    if (!window.confirm('Galaxyに保存したAPIトークンを削除しますか？')) {
+      return
+    }
+
+    localStorage.removeItem(API_TOKEN_STORAGE_KEY)
+    setNotifierToken('')
+    setSchedules([])
+    setScheduleMessage('')
+    setScheduleError('')
+  }
+
+  const addSchedule = async (event) => {
+    event.preventDefault()
+    setScheduleMessage('')
+    setScheduleError('')
+
+    if (!scheduleDate || !scheduleTime) {
+      setScheduleError('通知する日付と時刻を指定してください')
+      return
+    }
+
+    if (selectedParkIds.length === 0) {
+      setScheduleError('通知する駐車場を1か所以上選んでください')
+      return
+    }
+
+    const notifyAt = new Date(
+      `${scheduleDate}T${scheduleTime}:00+09:00`,
+    )
+
+    if (
+      Number.isNaN(notifyAt.getTime()) ||
+      notifyAt.getTime() <= Date.now()
+    ) {
+      setScheduleError('現在より後の日時を指定してください')
+      return
+    }
+
+    setScheduleLoading(true)
+
+    try {
+      const response = await fetch(`${NOTIFIER_URL}/schedules`, {
+        method: 'POST',
+        headers: notifierHeaders,
+        body: JSON.stringify({
+          notifyAt: notifyAt.toISOString(),
+          parkIds: selectedParkIds,
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || '通知予定を登録できませんでした')
+      }
+
+      setSelectedParkIds([])
+      setScheduleMessage('通知予定を登録しました')
+      await loadSchedules()
+      window.setTimeout(() => setScheduleMessage(''), 4000)
+    } catch (fetchError) {
+      console.error(fetchError)
+      setScheduleError(
+        fetchError.message || '通知予定を登録できませんでした',
+      )
+    } finally {
+      setScheduleLoading(false)
+    }
+  }
+
+  const deleteSchedule = async (scheduleId) => {
+    if (!window.confirm('この通知予定を削除しますか？')) return
+
+    setScheduleLoading(true)
+    setScheduleMessage('')
+    setScheduleError('')
+
+    try {
+      const response = await fetch(
+        `${NOTIFIER_URL}/schedules/${encodeURIComponent(scheduleId)}`,
+        {
+          method: 'DELETE',
+          headers: notifierHeaders,
+        },
+      )
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || '通知予定を削除できませんでした')
+      }
+
+      setScheduleMessage('通知予定を削除しました')
+      await loadSchedules()
+      window.setTimeout(() => setScheduleMessage(''), 4000)
+    } catch (fetchError) {
+      console.error(fetchError)
+      setScheduleError(
+        fetchError.message || '通知予定を削除できませんでした',
+      )
+    } finally {
+      setScheduleLoading(false)
+    }
+  }
+
+  const getScheduleParkNames = (parkIds) => {
+    if (!Array.isArray(parkIds) || parkIds.length === 0) {
+      return '駐車場未選択'
+    }
+
+    return parkIds
+      .map((id) => parks.find((park) => park.id === id))
+      .filter(Boolean)
+      .sort((a, b) => a.no - b.no)
+      .map((park) => `${park.no}. ${park.name}`)
+      .join('、')
   }
 
   return (
@@ -204,72 +525,359 @@ function App() {
       {needRefresh && (
         <section className="version-notice" role="alert">
           <strong>新しいバージョンがあります</strong>
-          <button type="button" onClick={() => updateServiceWorker(true)}>更新</button>
-          <button className="notice-close" type="button" onClick={() => setNeedRefresh(false)} aria-label="閉じる">×</button>
+          <button
+            type="button"
+            onClick={() => updateServiceWorker(true)}
+          >
+            更新
+          </button>
+          <button
+            className="notice-close"
+            type="button"
+            onClick={() => setNeedRefresh(false)}
+            aria-label="閉じる"
+          >
+            ×
+          </button>
         </section>
       )}
 
       {installPrompt && (
         <section className="install-notice">
           <span>この端末にアプリとしてインストールできます</span>
-          <button type="button" onClick={installApp}>インストール</button>
+          <button type="button" onClick={installApp}>
+            インストール
+          </button>
         </section>
       )}
 
-      <section className={`update-panel ${updateStopped ? 'stopped' : ''}`}>
-        {updateStopped && <div className="stopped-alert" role="alert">情報更新停止中</div>}
-        <button className="update-button" type="button" onClick={() => loadStatus(true)} disabled={loading}>
+      <section
+        className={`update-panel ${updateStopped ? 'stopped' : ''}`}
+      >
+        {updateStopped && (
+          <div className="stopped-alert" role="alert">
+            情報更新停止中
+          </div>
+        )}
+        <button
+          className="update-button"
+          type="button"
+          onClick={() => loadStatus(true)}
+          disabled={loading}
+        >
           {loading ? '更新中…' : '更新'}
         </button>
-        {successMessage && <p className="success-message" role="status">✓ {successMessage}</p>}
+        {successMessage && (
+          <p className="success-message" role="status">
+            ✓ {successMessage}
+          </p>
+        )}
         <div className="time-grid">
-          <p><strong>公式最終更新：</strong>{formatUpdatedAt(officialUpdatedAt)}<span>（{formatRelativeTime(officialUpdatedAt, currentTime)}）</span></p>
-          <p><strong>クラウド確認：</strong>{formatUpdatedAt(cloudFetchedAt)}<span>（{formatRelativeTime(cloudFetchedAt, currentTime)}）</span></p>
+          <p>
+            <strong>公式最終更新：</strong>
+            {formatUpdatedAt(officialUpdatedAt)}
+            <span>
+              （{formatRelativeTime(officialUpdatedAt, currentTime)}）
+            </span>
+          </p>
+          <p>
+            <strong>クラウド確認：</strong>
+            {formatUpdatedAt(cloudFetchedAt)}
+            <span>
+              （{formatRelativeTime(cloudFetchedAt, currentTime)}）
+            </span>
+          </p>
         </div>
-        {updateStopped && <p className="stopped-message">クラウド確認が{cloudAgeMinutes}分間止まっています。表示中の情報が古い可能性があります。</p>}
+        {updateStopped && (
+          <p className="stopped-message">
+            クラウド確認が{cloudAgeMinutes}
+            分間止まっています。表示中の情報が古い可能性があります。
+          </p>
+        )}
         {error && <p className="error-message">{error}</p>}
-        <p className="update-description"><span>空車情報は公式サイトから取得しています。</span><span>通常は0～10分前の情報を表示します。</span></p>
-        <p className="cloud-update-note">5分ごとにクラウドで自動更新</p>
+        <p className="update-description">
+          <span>空車情報は公式サイトから取得しています。</span>
+          <span>通常は0～10分前の情報を表示します。</span>
+        </p>
+        <p className="cloud-update-note">
+          5分ごとにクラウドで自動更新
+        </p>
       </section>
 
       <section className="status-summary" aria-label="空車状況集計">
-        <div className="summary-item summary-free"><span>空車</span><strong>{statusCounts.free}</strong></div>
-        <div className="summary-item summary-busy"><span>混雑</span><strong>{statusCounts.busy}</strong></div>
-        <div className="summary-item summary-full"><span>満車</span><strong>{statusCounts.full}</strong></div>
+        <div className="summary-item summary-free">
+          <span>空車</span>
+          <strong>{statusCounts.free}</strong>
+        </div>
+        <div className="summary-item summary-busy">
+          <span>混雑</span>
+          <strong>{statusCounts.busy}</strong>
+        </div>
+        <div className="summary-item summary-full">
+          <span>満車</span>
+          <strong>{statusCounts.full}</strong>
+        </div>
       </section>
+
+      {isGalaxyView && (
+        <section className="schedule-panel">
+          <button
+            className="schedule-toggle-button"
+            type="button"
+            onClick={() => setShowSchedulePanel((current) => !current)}
+          >
+            {showSchedulePanel ? '通知予約を閉じる' : '空車情報を日時指定で通知'}
+          </button>
+
+          {showSchedulePanel && (
+            <div className="schedule-content">
+              <h2>Galaxy・Garminへの通知予約</h2>
+              <p className="schedule-description">
+                指定日時に、選択した駐車場の空車情報を通知します。
+              </p>
+
+              {!notifierToken ? (
+                <form
+                  className="schedule-token-form"
+                  onSubmit={saveNotifierToken}
+                >
+                  <label htmlFor="notifier-token">
+                    初回設定：APIトークン
+                  </label>
+                  <input
+                    id="notifier-token"
+                    type="password"
+                    value={tokenInput}
+                    onChange={(event) =>
+                      setTokenInput(event.target.value)
+                    }
+                    autoComplete="off"
+                    placeholder="APIトークンを貼り付け"
+                  />
+                  <button type="submit">Galaxyに保存</button>
+                  <p>
+                    トークンはGitHubへ送らず、このGalaxy内だけに保存します。
+                  </p>
+                </form>
+              ) : (
+                <>
+                  <div className="schedule-token-status">
+                    <span>通知サーバー接続設定：保存済み</span>
+                    <button type="button" onClick={clearNotifierToken}>
+                      設定削除
+                    </button>
+                  </div>
+
+                  <form onSubmit={addSchedule}>
+                <div className="schedule-datetime">
+                  <label>
+                    日付
+                    <input
+                      type="date"
+                      value={scheduleDate}
+                      min={getInitialScheduleDate()}
+                      onChange={(event) =>
+                        setScheduleDate(event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                  <label>
+                    時刻
+                    <input
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(event) =>
+                        setScheduleTime(event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                </div>
+
+                <fieldset className="schedule-parks">
+                  <legend>通知する駐車場（複数選択可）</legend>
+                  {sortedParks.map((park) => (
+                    <label key={park.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedParkIds.includes(park.id)}
+                        onChange={() => toggleSchedulePark(park.id)}
+                      />
+                      <span className="schedule-park-number">
+                        {park.no}
+                      </span>
+                      <span>{park.name}</span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <button
+                  className="schedule-add-button"
+                  type="submit"
+                  disabled={scheduleLoading}
+                >
+                  {scheduleLoading ? '処理中…' : 'この日時で通知予約'}
+                </button>
+                  </form>
+
+                  <div className="schedule-list-heading">
+                    <h3>登録済み通知</h3>
+                    <button
+                      type="button"
+                      onClick={loadSchedules}
+                      disabled={scheduleLoading}
+                    >
+                      再読込
+                    </button>
+                  </div>
+
+                  {schedules.length === 0 ? (
+                    <p className="schedule-empty">
+                      登録済みの通知はありません
+                    </p>
+                  ) : (
+                    <div className="schedule-list">
+                      {schedules.map((schedule) => (
+                        <article
+                          className="schedule-item"
+                          key={schedule.id}
+                        >
+                          <div>
+                            <strong>
+                              {formatScheduleDate(schedule.notifyAt)}
+                            </strong>
+                            <p>
+                              {getScheduleParkNames(schedule.parkIds)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              deleteSchedule(schedule.id)
+                            }
+                            disabled={scheduleLoading}
+                          >
+                            削除
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {scheduleMessage && (
+                <p className="schedule-success" role="status">
+                  ✓ {scheduleMessage}
+                </p>
+              )}
+              {scheduleError && (
+                <p className="schedule-error" role="alert">
+                  {scheduleError}
+                </p>
+              )}
+
+            </div>
+          )}
+        </section>
+      )}
 
       <main className="content">
         <section id="parking-map" className="map-panel">
           <div className="map-heading">
-            <div className="selected-parking">{selectedPark ? `選択中：${selectedPark.no}番 ${selectedPark.name}` : '駐車場カードを押すと選択番号を表示します'}</div>
-            <button className="map-toggle-button" type="button" onClick={() => setShowMap((current) => !current)}>{showMap ? '地図を隠す' : '地図を表示'}</button>
+            <div className="selected-parking">
+              {selectedPark
+                ? `選択中：${selectedPark.no}番 ${selectedPark.name}`
+                : '駐車場カードを押すと選択番号を表示します'}
+            </div>
+            <button
+              className="map-toggle-button"
+              type="button"
+              onClick={() => setShowMap((current) => !current)}
+            >
+              {showMap ? '地図を隠す' : '地図を表示'}
+            </button>
           </div>
-          {showMap && <iframe className="parking-map" src={MAP_URL} title="タイムズ駐車場地図" loading="eager" allowFullScreen />}
+          {showMap && (
+            <iframe
+              className="parking-map"
+              src={MAP_URL}
+              title="タイムズ駐車場地図"
+              loading="eager"
+              allowFullScreen
+            />
+          )}
         </section>
 
         <section className="parking-list">
           {sortedParks.map((park) => {
-            const officialUrl = `https://times-info.net/P27-osaka/C103/park-detail-${park.id}/`
-            const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${park.name} 大阪府大阪市`)}&travelmode=driving`
+            const officialUrl =
+              `https://times-info.net/P27-osaka/C103/park-detail-${park.id}/`
+            const routeUrl =
+              `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${park.name} 大阪府大阪市`)}&travelmode=driving`
             const change = changes[park.id]
             const selected = selectedPark?.id === park.id
+
             return (
-              <article className={`parking-card ${change ? 'parking-card-changed' : ''} ${selected ? 'parking-card-selected' : ''}`} key={park.id} onClick={() => selectPark(park)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectPark(park) } }} role="button" tabIndex="0">
+              <article
+                className={`parking-card ${change ? 'parking-card-changed' : ''} ${selected ? 'parking-card-selected' : ''}`}
+                key={park.id}
+                onClick={() => selectPark(park)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    selectPark(park)
+                  }
+                }}
+                role="button"
+                tabIndex="0"
+              >
                 <div className="number-button">{park.no}</div>
                 <div className="parking-information">
                   <h2>{park.name}</h2>
-                  {change && <div className={`status-change ${getChangeClass(change.after)}`}>{change.before} → {change.after}</div>}
+                  {change && (
+                    <div
+                      className={`status-change ${getChangeClass(change.after)}`}
+                    >
+                      {change.before} → {change.after}
+                    </div>
+                  )}
                   <p className="distance">{park.distance}</p>
                   <div className="parking-links">
-                    <a className="official-link" href={officialUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>公式情報</a>
-                    <a className="map-link" href={routeUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>経路案内</a>
+                    <a
+                      className="official-link"
+                      href={officialUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      公式情報
+                    </a>
+                    <a
+                      className="map-link"
+                      href={routeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      経路案内
+                    </a>
                   </div>
                 </div>
-                <div className={`parking-status ${getStatusClass(park.status)}`}>{park.status || '不明'}</div>
+                <div
+                  className={`parking-status ${getStatusClass(park.status)}`}
+                >
+                  {park.status || '不明'}
+                </div>
               </article>
             )
           })}
-          {!loading && parks.length === 0 && <p className="empty-message">駐車場の空車情報がありません</p>}
+          {!loading && parks.length === 0 && (
+            <p className="empty-message">
+              駐車場の空車情報がありません
+            </p>
+          )}
         </section>
       </main>
     </div>
