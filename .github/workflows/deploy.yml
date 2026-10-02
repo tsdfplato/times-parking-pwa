@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -37,8 +37,25 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Fetch parking status
-        run: node scripts/fetch-status.mjs
+      - name: Fetch parking status with retries
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            echo "Parking status fetch attempt ${attempt}/3"
+
+            if node scripts/fetch-status.mjs; then
+              echo "Parking status fetch succeeded"
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "Fetch failed. Retrying in 30 seconds."
+              sleep 30
+            fi
+          done
+
+          echo "Parking status fetch failed after 3 attempts"
+          exit 1
 
       - name: Build PWA
         run: npm run build
