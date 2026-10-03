@@ -160,6 +160,53 @@ button { touch-action: manipulation; }
 
 .schedule-token-form p { margin: 0; color: #526273; font-size: .68rem; font-weight: 700; }
 
+.push-notification-settings {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 11px;
+  color: #172b43;
+  background: #eef7ff;
+  border: 2px solid #0758a5;
+  border-radius: 9px;
+}
+
+.push-notification-settings strong {
+  font-size: .86rem;
+}
+
+.push-notification-settings p {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.push-notification-settings button {
+  min-height: 42px;
+  padding: 8px 12px;
+  color: #fff;
+  font-weight: 900;
+  background: #0758a5;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.push-enabled-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #067232;
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.push-success {
+  color: #067232 !important;
+}
+
 .schedule-token-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 11px; padding: 8px 10px; color: #075d2c; font-size: .75rem; font-weight: 900; background: #e8f8ed; border-radius: 8px; }
 
 .schedule-token-status button { flex: 0 0 auto; min-height: 32px; padding: 4px 9px; color: #a20e18; font-size: .7rem; font-weight: 900; background: #fff; border: 1px solid #d52b2b; border-radius: 7px; cursor: pointer; }

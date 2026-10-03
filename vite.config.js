@@ -14,6 +14,7 @@ export default defineConfig({
       workbox: {
         globIgnores: ['**/status.json'],
         cleanupOutdatedCaches: true,
+        importScripts: ['push-handler.js'],
       },
 
       manifest: {
