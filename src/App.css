@@ -591,3 +591,57 @@ button { touch-action: manipulation; }
   stroke-width: 2 !important;
   box-sizing: border-box !important;
 }
+
+/* カレンダーを時計と同じ表示にする最終修正 */
+.schedule-picker-field {
+  position: relative !important;
+  display: block !important;
+  overflow: hidden !important;
+  border-radius: 8px !important;
+}
+
+.schedule-picker-field input {
+  width: 100% !important;
+  padding-right: 48px !important;
+}
+
+.schedule-picker-field > button,
+.schedule-picker-field .schedule-picker-button {
+  position: absolute !important;
+  top: 2px !important;
+  right: 2px !important;
+  bottom: 2px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #263746 !important;
+  background: #ffffff !important;
+  border: 0 !important;
+  border-left: 0 !important;
+  border-radius: 0 6px 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+.schedule-picker-field .schedule-calendar-icon {
+  display: block !important;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #263746 !important;
+  fill: none !important;
+  stroke: #263746 !important;
+  stroke-width: 2 !important;
+}
