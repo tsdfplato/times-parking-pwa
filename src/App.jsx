@@ -915,25 +915,25 @@ function App() {
                   <label>
                     日付
                     <span className="schedule-picker-field">
-                      <input
-                        ref={dateInputRef}
-                        type="date"
-                        value={scheduleDate}
-                        min={getInitialScheduleDate()}
-                        onChange={(event) =>
-                          setScheduleDate(event.target.value)
-                        }
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="schedule-picker-button"
-                        onClick={openDatePicker}
-                        aria-label="カレンダーを開く"
-                      >
-                        <svg className="schedule-calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>
-                      </button>
-                    </span>
+  <input
+    ref={dateInputRef}
+    type="date"
+    value={scheduleDate}
+    min={getInitialScheduleDate()}
+    onChange={(event) =>
+      setScheduleDate(event.target.value)
+    }
+    required
+  />
+  <svg
+    className="schedule-calendar-icon"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+  >
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M8 3v4M16 3v4M3 10h18" />
+  </svg>
+</span>
                   </label>
                   <label>
                     時刻
