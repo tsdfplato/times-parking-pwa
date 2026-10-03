@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || '空車情報を確認してください',
     icon: data.icon || './times-icon.svg',
-    badge: data.badge || './times-icon.svg',
+    badge: './notification-badge.png',
     tag: data.tag || 'times-parking-status',
     renotify: true,
     data: {

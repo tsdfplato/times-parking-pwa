@@ -725,7 +725,7 @@ async function sendWebPushToAll(env, message) {
         title: title || 'タイムズ Parking Information',
         body: bodyLines.join('\n') || title,
         icon: 'https://tsdfplato.github.io/times-parking-pwa/times-icon.svg',
-        badge: 'https://tsdfplato.github.io/times-parking-pwa/times-icon.svg',
+        badge: 'https://tsdfplato.github.io/times-parking-pwa/notification-badge.png',
         url: 'https://tsdfplato.github.io/times-parking-pwa/',
         tag: 'times-parking-status',
       })
