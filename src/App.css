@@ -504,3 +504,34 @@ button { touch-action: manipulation; }
     height: 18px;
   }
 }
+/* Calendar icon without fixed date number */
+.schedule-calendar-icon {
+  position: relative;
+  display: block;
+  width: 21px;
+  height: 19px;
+  margin: auto;
+  border: 2px solid #263746;
+  border-radius: 3px;
+}
+
+.schedule-calendar-icon::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: -2px;
+  right: -2px;
+  border-top: 2px solid #263746;
+}
+
+.schedule-calendar-icon::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 3px;
+  width: 3px;
+  height: 6px;
+  background: #263746;
+  border-radius: 2px;
+  box-shadow: 9px 0 0 #263746;
+}

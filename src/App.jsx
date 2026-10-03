@@ -931,7 +931,7 @@ function App() {
                         onClick={openDatePicker}
                         aria-label="カレンダーを開く"
                       >
-                        📅
+                        <span className="schedule-calendar-icon" aria-hidden="true" />
                       </button>
                     </span>
                   </label>
