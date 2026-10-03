@@ -535,3 +535,28 @@ button { touch-action: manipulation; }
   border-radius: 2px;
   box-shadow: 9px 0 0 #263746;
 }
+/* Final calendar and update-description frame fix */
+.update-description {
+  border-right: 4px solid #0758a5;
+}
+
+.schedule-calendar-icon {
+  display: block;
+  width: 24px !important;
+  height: 24px !important;
+  margin: auto;
+  overflow: hidden;
+  fill: none;
+  stroke: #263746;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.schedule-calendar-icon::before,
+.schedule-calendar-icon::after {
+  content: none !important;
+  display: none !important;
+}
