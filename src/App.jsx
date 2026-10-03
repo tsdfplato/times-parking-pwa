@@ -172,7 +172,7 @@ function App() {
   const [isGalaxyView, setIsGalaxyView] = useState(false)
   const [showSchedulePanel, setShowSchedulePanel] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(getInitialScheduleDate)
-  const [scheduleTime, setScheduleTime] = useState('08:00')
+  const [scheduleTime, setScheduleTime] = useState('00:00')
   const [repeatType, setRepeatType] = useState('none')
   const [repeatWeekdays, setRepeatWeekdays] = useState([])
   const [intervalHours, setIntervalHours] = useState(1)
@@ -190,7 +190,7 @@ function App() {
   const [pushMessage, setPushMessage] = useState('')
   const dateInputRef = useRef(null)
   const timeDialogRef = useRef(null)
-  const [draftHour, setDraftHour] = useState('08')
+  const [draftHour, setDraftHour] = useState('00')
   const [draftMinute, setDraftMinute] = useState('00')
 
   const {
@@ -551,7 +551,7 @@ function App() {
   }
 
   const openTimePicker = () => {
-    const [hour = '08', minute = '00'] = scheduleTime.split(':')
+    const [hour = '00', minute = '00'] = scheduleTime.split(':')
     setDraftHour(hour)
     setDraftMinute(minute)
     timeDialogRef.current?.showModal()

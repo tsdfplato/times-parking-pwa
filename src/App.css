@@ -426,3 +426,81 @@ button { touch-action: manipulation; }
 @media (max-width: 380px) { .app-header h1 { font-size: .9rem; } .parking-card { grid-template-columns: 38px minmax(0, 1fr) 56px; gap: 5px; padding: 9px 5px; } .number-button { width: 37px; height: 37px; font-size: 1.05rem; } .parking-status { min-width: 54px; font-size: .73rem; } }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .parking-card { transition: none; } .parking-card-changed { animation: none; } }
+
+/* ==========================================================
+   Notification schedule UI fixes
+   ========================================================== */
+
+.schedule-picker-field {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.schedule-picker-button {
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  max-height: none;
+  border-radius: 0 6px 6px 0;
+}
+
+.schedule-datetime input {
+  padding-right: 44px;
+}
+
+/* Unchecked checkbox: white base */
+.schedule-parks input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  place-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  background: #ffffff;
+  border: 2px solid #7b8998;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.schedule-parks input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 3px solid #ffffff;
+  border-bottom: 3px solid #ffffff;
+  transform: rotate(-45deg) scale(0);
+  transform-origin: center;
+}
+
+.schedule-parks input[type="checkbox"]:checked {
+  background: #0758a5;
+  border-color: #0758a5;
+}
+
+.schedule-parks input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+/* Registered notification: blue brackets on both sides */
+.schedule-item {
+  border-right: 4px solid #0758a5;
+}
+
+@media (max-width: 600px) {
+  .schedule-datetime input {
+    padding: 5px 42px 5px 7px;
+  }
+
+  .schedule-picker-button {
+    width: 38px;
+  }
+
+  .schedule-parks input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+}
