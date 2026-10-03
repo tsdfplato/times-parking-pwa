@@ -560,3 +560,34 @@ button { touch-action: manipulation; }
   content: none !important;
   display: none !important;
 }
+/* カレンダーアイコン最終修正 */
+.schedule-picker-field {
+  overflow: hidden !important;
+}
+
+.schedule-picker-field .schedule-picker-button {
+  width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.schedule-picker-field .schedule-calendar-icon {
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  box-sizing: border-box !important;
+}
