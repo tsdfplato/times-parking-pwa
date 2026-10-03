@@ -722,10 +722,6 @@ function App() {
       <header className="app-header">
         <div className="brand">
           <img className="times-logo" src={TIMES_LOGO} alt="Times" />
-          <div className="brand-text">
-            <div className="brand-japanese">タイムズの駐車場検索</div>
-            <h1>タイムズ Parking Information</h1>
-          </div>
         </div>
         <p className="subtitle">タイムズ駐車場 空車情報</p>
       </header>

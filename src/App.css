@@ -687,3 +687,29 @@ button { touch-action: manipulation; }
   pointer-events: none !important;
   box-sizing: border-box !important;
 }
+
+/* ヘッダーの重複表示削除後 */
+.app-header .brand {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+}
+
+.app-header .times-logo {
+  display: block !important;
+  width: min(360px, 82vw) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 0 auto !important;
+}
+
+.app-header {
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+.app-header .subtitle {
+  margin-top: 10px !important;
+}
