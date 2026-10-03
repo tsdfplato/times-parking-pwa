@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+  <title>タイムズ通知テスト</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      color: #172b43;
+      background: #f3f6f9;
+      font-family:
+        "BIZ UDPゴシック",
+        "Noto Sans JP",
+        sans-serif;
+    }
+
+    main {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 24px;
+      background: #ffffff;
+      border: 3px solid #ffd400;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 1.35rem;
+    }
+
+    p {
+      line-height: 1.7;
+    }
+
+    button {
+      width: 100%;
+      min-height: 58px;
+      margin-top: 16px;
+      color: #1d1d1b;
+      background: #ffd400;
+      border: 2px solid #c8a900;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    #result {
+      margin-top: 18px;
+      padding: 12px;
+      background: #eef5fb;
+      border-radius: 9px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>タイムズPWA通知テスト</h1>
+
+    <p>
+      ボタンを押すと、LINEを経由せず、
+      タイムズPWAからGalaxyへ直接通知します。
+    </p>
+
+    <button id="notifyButton" type="button">
+      PWA通知を送信
+    </button>
+
+    <div id="result">
+      待機中
+    </div>
+  </main>
+
+  <script>
+    const notifyButton =
+      document.getElementById('notifyButton')
+
+    const result =
+      document.getElementById('result')
+
+    notifyButton.addEventListener('click', async () => {
+      try {
+        result.textContent = '通知準備中…'
+
+        if (!('Notification' in window)) {
+          throw new Error(
+            'この端末は通知機能に対応していません',
+          )
+        }
+
+        if (!('serviceWorker' in navigator)) {
+          throw new Error(
+            'Service Workerに対応していません',
+          )
+        }
+
+        const permission =
+          await Notification.requestPermission()
+
+        if (permission !== 'granted') {
+          throw new Error(
+            '通知が許可されませんでした',
+          )
+        }
+
+        const registration =
+          await navigator.serviceWorker.register('./sw.js')
+
+        await navigator.serviceWorker.ready
+
+        await registration.showNotification(
+          'タイムズ 23:20更新',
+          {
+            body: '野田6丁目駐車場は空車です',
+            icon: './times-icon.svg',
+            badge: './times-icon.svg',
+            tag: 'times-parking-test',
+            renotify: true,
+          },
+        )
+
+        result.textContent =
+          '通知を送信しました。GalaxyとGarminを確認してください。'
+      } catch (error) {
+        console.error(error)
+
+        result.textContent =
+          `エラー：${error.message}`
+      }
+    })
+  </script>
+</body>
+</html>
