@@ -838,7 +838,7 @@ function createParkingMessage(
 
   if (selected.length === 0) {
 
-    return 'タイムズ｜駐車場情報を取得できません'
+    return 'タイムズ 駐車場情報を取得できません'
 
   }
 
@@ -864,7 +864,7 @@ function createParkingMessage(
 
 
 
-      return `${name}｜${park.status || '不明'}`
+      return `${name} ${park.status || '不明'}`
 
     })
 
@@ -1360,7 +1360,7 @@ async function handleRequest(request, env) {
 
         env,
 
-        'タイムズ通知テスト｜Galaxy・Garmin確認',
+        'タイムズ通知テスト Galaxy・Garmin確認',
 
       )
 
@@ -1524,7 +1524,7 @@ async function handleRequest(request, env) {
 
       env,
 
-      `タイムズ通知テスト\n野田6丁目駐車場｜通知テスト`,
+      `タイムズ通知テスト\n野田6丁目駐車場 通知テスト`,
 
     )
 
