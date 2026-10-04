@@ -137,6 +137,23 @@ function getInitialScheduleDate() {
   return formatter.format(new Date())
 }
 
+function formatScheduleInputDate(date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+function formatScheduleInputTime(date) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Tokyo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
 function loadStoredObject(key) {
   try {
     const saved = localStorage.getItem(key)
@@ -989,6 +1006,58 @@ function App() {
                   </label>
                 </div>
 
+                <div className="schedule-quick-settings">
+                  <span>クイック設定</span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = new Date(Date.now() + 5 * 60 * 1000)
+                      setScheduleDate(formatScheduleInputDate(target))
+                      setScheduleTime(formatScheduleInputTime(target))
+                    }}
+                  >
+                    5分後
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setScheduleDate(
+                        formatScheduleInputDate(new Date()),
+                      )
+                    }
+                  >
+                    今日
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setScheduleDate(
+                        formatScheduleInputDate(
+                          new Date(Date.now() + 24 * 60 * 60 * 1000),
+                        ),
+                      )
+                    }
+                  >
+                    明日
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setScheduleTime('08:00')}
+                  >
+                    08:00
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setScheduleTime('18:00')}
+                  >
+                    18:00
+                  </button>
+                </div>
                 <fieldset className="schedule-repeat">
                   <legend>繰り返し</legend>
                   <select
