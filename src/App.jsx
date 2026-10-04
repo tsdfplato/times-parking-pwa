@@ -1111,6 +1111,39 @@ function App() {
 
                 <fieldset className="schedule-parks">
                   <legend>通知する駐車場（複数選択可）</legend>
+                  <div className="schedule-park-actions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedParkIds(
+                          sortedParks.map((park) => park.id),
+                        )
+                      }
+                    >
+                      すべて選択
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const firstPark = sortedParks.find(
+                          (park) => park.no === 1,
+                        )
+                        setSelectedParkIds(
+                          firstPark ? [firstPark.id] : [],
+                        )
+                      }}
+                    >
+                      1番のみ
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedParkIds([])}
+                    >
+                      選択解除
+                    </button>
+                  </div>
                   {sortedParks.map((park) => (
                     <label key={park.id}>
                       <input
