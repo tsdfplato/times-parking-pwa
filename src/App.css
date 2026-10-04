@@ -713,3 +713,77 @@ button { touch-action: manipulation; }
 .app-header .subtitle {
   margin-top: 10px !important;
 }
+
+/* 次回通知の常時表示 */
+.next-notification-panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 10px;
+  align-items: center;
+  width: min(calc(100% - 20px), 920px);
+  margin: 10px auto;
+  padding: 11px 12px;
+  color: #172b43;
+  background: #eef6ff;
+  border: 2px solid #0758a5;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.next-notification-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: #0758a5;
+  font-size: 0.82rem;
+}
+
+.next-notification-date {
+  grid-column: 1;
+  font-size: 0.9rem;
+}
+
+.next-notification-repeat {
+  grid-column: 1;
+  color: #526273;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.next-notification-panel p {
+  grid-column: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.next-notification-panel > button {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  min-width: 94px;
+  min-height: 42px;
+  padding: 7px 9px;
+  color: #fff;
+  background: #0758a5;
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 430px) {
+  .next-notification-panel {
+    width: calc(100% - 16px);
+    margin: 8px auto;
+    padding: 9px 10px;
+  }
+
+  .next-notification-panel > button {
+    min-width: 82px;
+    padding: 6px;
+    font-size: 0.66rem;
+  }
+}

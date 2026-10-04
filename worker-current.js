@@ -10,7 +10,7 @@ const PUSH_PREFIX = 'push:'
 
 const LAST_LINE_USER_KEY = 'line:last-user'
 
-const MAX_STATUS_AGE_MS = 10 * 60 * 1000
+const MAX_STATUS_AGE_MS = 20 * 60 * 1000
 
 
 
@@ -706,7 +706,7 @@ async function sendWebPush(env, subscriptionRecord, notification) {
       Authorization: authorization,
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',
-      TTL: '300',
+      TTL: '86400',
       Urgency: 'high',
     },
     body,

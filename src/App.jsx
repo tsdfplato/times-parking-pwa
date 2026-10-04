@@ -808,6 +808,51 @@ function App() {
         </p>
       </section>
 
+      {isGalaxyView && (
+        <section className="next-notification-panel">
+          <div className="next-notification-title">
+            <span aria-hidden="true">🔔</span>
+            <strong>次回通知</strong>
+          </div>
+
+          {!notifierToken ? (
+            <p>通知設定が未登録です</p>
+          ) : scheduleLoading && schedules.length === 0 ? (
+            <p>通知予定を確認中…</p>
+          ) : schedules.length > 0 ? (
+            <>
+              <strong className="next-notification-date">
+                {formatScheduleDate(schedules[0].notifyAt)}
+              </strong>
+              <span className="next-notification-repeat">
+                {formatRepeat(schedules[0])}
+              </span>
+              <p>
+                {getScheduleParkNames(schedules[0].parkIds)}
+              </p>
+            </>
+          ) : (
+            <p>登録済みの通知はありません</p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSchedulePanel(true)
+              window.setTimeout(() => {
+                document
+                  .getElementById('schedule-panel')
+                  ?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  })
+              }, 50)
+            }}
+          >
+            通知予約を確認
+          </button>
+        </section>
+      )}
       <section className="status-summary" aria-label="空車状況集計">
         <div className="summary-item summary-free">
           <span>空車</span>
@@ -824,7 +869,7 @@ function App() {
       </section>
 
       {isGalaxyView && (
-        <section className="schedule-panel">
+        <section id="schedule-panel" className="schedule-panel">
           <button
             className="schedule-toggle-button"
             type="button"
