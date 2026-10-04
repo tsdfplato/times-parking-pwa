@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "57602526722",
+    "project_id": "times-parking-pwa",
+    "storage_bucket": "times-parking-pwa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:57602526722:android:78c3b1dbc5b1bb44f4611b",
+        "android_client_info": {
+          "package_name": "jp.tsdfplato.timesparking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAM0so-PfaVdSfBEHvNPHfmFpUpTNIGuHE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
