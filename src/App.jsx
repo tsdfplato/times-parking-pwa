@@ -841,7 +841,7 @@ function App() {
               setShowSchedulePanel(true)
               window.setTimeout(() => {
                 document
-                  .getElementById('schedule-panel')
+                  .getElementById('registered-schedules')
                   ?.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start',
@@ -849,7 +849,7 @@ function App() {
               }, 50)
             }}
           >
-            通知予約を確認
+            登録済み通知を確認
           </button>
         </section>
       )}
@@ -1066,7 +1066,7 @@ function App() {
                 </button>
                   </form>
 
-                  <div className="schedule-list-heading">
+                  <div id="registered-schedules" className="schedule-list-heading">
                     <h3>登録済み通知</h3>
                     <button
                       type="button"
