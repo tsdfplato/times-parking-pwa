@@ -16,13 +16,38 @@ self.addEventListener('push', (event) => {
     icon: data.icon || './times-icon.svg',
     badge: './notification-badge.png',
     tag: data.tag || 'times-parking-status',
-    renotify: true,
+    renotify: data.renotify ?? false,
     data: {
       url: data.url || './',
+      deliveryId: data.deliveryId || '',
+      ackUrl: data.ackUrl || '',
     },
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, options)
+
+      if (!data.deliveryId || !data.ackUrl) {
+        return
+      }
+
+      try {
+        await fetch(data.ackUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deliveryId: data.deliveryId,
+            receivedAt: new Date().toISOString(),
+          }),
+        })
+      } catch (error) {
+        console.error('push acknowledgment failed', error)
+      }
+    })(),
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {

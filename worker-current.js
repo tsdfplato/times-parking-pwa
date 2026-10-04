@@ -8,6 +8,16 @@ const SCHEDULE_PREFIX = 'schedule:'
 
 const PUSH_PREFIX = 'push:'
 
+const DELIVERY_PREFIX = 'delivery:'
+
+const PUSH_ACK_URL =
+
+  'https://times-parking-notifier.kubota-mlc.workers.dev/push-ack'
+
+const PUSH_RETRY_INTERVAL_MS = 60 * 1000
+
+const PUSH_RETRY_LIMIT_MS = 10 * 60 * 1000
+
 const LAST_LINE_USER_KEY = 'line:last-user'
 
 const MAX_STATUS_AGE_MS = 20 * 60 * 1000
@@ -713,8 +723,13 @@ async function sendWebPush(env, subscriptionRecord, notification) {
   })
 }
 
-async function sendWebPushToAll(env, message) {
-  const subscriptions = await listPushSubscriptions(env)
+async function sendWebPushToAll(env, message, options = {}) {
+  const allSubscriptions = await listPushSubscriptions(env)
+  const subscriptions = options.androidOnly
+    ? allSubscriptions.filter((record) =>
+        /Android/i.test(record.userAgent || ''),
+      )
+    : allSubscriptions
   const [title, ...bodyLines] = message.split('\n')
   let sent = 0
   let failed = 0
@@ -727,7 +742,10 @@ async function sendWebPushToAll(env, message) {
         icon: 'https://tsdfplato.github.io/times-parking-pwa/times-icon.svg',
         badge: 'https://tsdfplato.github.io/times-parking-pwa/notification-badge.png',
         url: 'https://tsdfplato.github.io/times-parking-pwa/',
-        tag: 'times-parking-status',
+        tag: options.tag || 'times-parking-status',
+        renotify: options.renotify ?? false,
+        deliveryId: options.deliveryId || '',
+        ackUrl: options.ackUrl || '',
       })
       if (response.ok) {
         sent += 1
@@ -749,9 +767,7 @@ async function sendWebPushToAll(env, message) {
 
 async function sendPreferredNotification(env, message) {
   const pushResult = await sendWebPushToAll(env, message)
-  if (pushResult.sent > 0) return { channel: 'web-push', ...pushResult }
-  await sendLine(env, message)
-  return { channel: 'line', ...pushResult }
+  return { channel: 'web-push', ...pushResult }
 }
 
 
@@ -973,6 +989,251 @@ async function saveDelayedSchedule(
 }
 
 
+async function completeScheduleDelivery(
+
+  env,
+
+  deliveryId,
+
+  completedAt = Date.now(),
+
+) {
+
+  const deliveryKey = `${DELIVERY_PREFIX}${deliveryId}`
+
+  const delivery = await env.SCHEDULES.get(
+
+    deliveryKey,
+
+    'json',
+
+  )
+
+
+
+  if (!delivery?.scheduleId) {
+
+    return false
+
+  }
+
+
+
+  const scheduleKey =
+
+    `${SCHEDULE_PREFIX}${delivery.scheduleId}`
+
+  const schedule = await env.SCHEDULES.get(
+
+    scheduleKey,
+
+    'json',
+
+  )
+
+
+
+  if (
+
+    schedule &&
+
+    schedule.pendingDeliveryId === deliveryId
+
+  ) {
+
+    const next = nextNotifyAt(schedule, completedAt)
+
+
+
+    if (next) {
+
+      await env.SCHEDULES.put(
+
+        scheduleKey,
+
+        JSON.stringify({
+
+          ...schedule,
+
+          notifyAt: next,
+
+          lastNotifiedAt:
+
+            new Date(completedAt).toISOString(),
+
+          delayAlertedAt: null,
+
+          lastRetryAt: null,
+
+          pendingDeliveryId: null,
+
+        }),
+
+      )
+
+    } else {
+
+      await env.SCHEDULES.delete(scheduleKey)
+
+    }
+
+  }
+
+
+
+  await env.SCHEDULES.delete(deliveryKey)
+
+  return true
+
+}
+
+
+
+async function createPendingDelivery(
+
+  env,
+
+  schedule,
+
+  message,
+
+  now,
+
+) {
+
+  const deliveryId = crypto.randomUUID()
+
+  const delivery = {
+
+    id: deliveryId,
+
+    scheduleId: schedule.id,
+
+    occurrenceAt: schedule.notifyAt,
+
+    message,
+
+    attempts: 0,
+
+    createdAt: new Date(now).toISOString(),
+
+    retryUntil: new Date(
+
+      now + PUSH_RETRY_LIMIT_MS,
+
+    ).toISOString(),
+
+    lastAttemptAt: null,
+
+  }
+
+
+
+  await env.SCHEDULES.put(
+
+    `${DELIVERY_PREFIX}${deliveryId}`,
+
+    JSON.stringify(delivery),
+
+    { expirationTtl: 86400 },
+
+  )
+
+
+
+  await env.SCHEDULES.put(
+
+    `${SCHEDULE_PREFIX}${schedule.id}`,
+
+    JSON.stringify({
+
+      ...schedule,
+
+      pendingDeliveryId: deliveryId,
+
+    }),
+
+  )
+
+
+
+  return delivery
+
+}
+
+
+
+async function sendPendingDelivery(env, delivery, now) {
+
+  const result = await sendWebPushToAll(
+
+    env,
+
+    delivery.message,
+
+    {
+
+      deliveryId: delivery.id,
+
+      ackUrl: PUSH_ACK_URL,
+
+      tag: `times-parking-${delivery.scheduleId}`,
+
+      renotify: false,
+
+      androidOnly: true,
+
+    },
+
+  )
+
+
+
+  const deliveryKey =
+
+    `${DELIVERY_PREFIX}${delivery.id}`
+
+  const stillPending = await env.SCHEDULES.get(
+
+    deliveryKey,
+
+    'json',
+
+  )
+
+
+
+  if (stillPending) {
+
+    await env.SCHEDULES.put(
+
+      deliveryKey,
+
+      JSON.stringify({
+
+        ...stillPending,
+
+        attempts: (stillPending.attempts || 0) + 1,
+
+        lastAttemptAt: new Date(now).toISOString(),
+
+        lastResult: result,
+
+      }),
+
+      { expirationTtl: 86400 },
+
+    )
+
+  }
+
+
+
+  return result
+
+}
+
+
 
 async function runDueSchedules(env) {
 
@@ -1060,63 +1321,103 @@ async function runDueSchedules(env) {
 
 
 
-      await sendPreferredNotification(
+      let delivery = schedule.pendingDeliveryId
 
-        env,
+        ? await env.SCHEDULES.get(
 
-        createParkingMessage(
+            `${DELIVERY_PREFIX}${schedule.pendingDeliveryId}`,
 
-          statusData,
+            'json',
 
-          schedule.parkIds || [],
+          )
 
-          Boolean(schedule.delayAlertedAt),
-
-        ),
-
-      )
+        : null
 
 
 
-      const next = nextNotifyAt(schedule, now)
+      if (!delivery) {
 
+        delivery = await createPendingDelivery(
 
+          env,
 
-      if (next) {
+          schedule,
 
-        await env.SCHEDULES.put(
+          createParkingMessage(
 
-          `${SCHEDULE_PREFIX}${schedule.id}`,
+            statusData,
 
-          JSON.stringify({
+            schedule.parkIds || [],
 
-            ...schedule,
+            Boolean(schedule.delayAlertedAt),
 
-            notifyAt: next,
+          ),
 
-            lastNotifiedAt:
-
-              new Date(now).toISOString(),
-
-
-
-            delayAlertedAt: null,
-
-            lastRetryAt: null,
-
-          }),
-
-        )
-
-      } else {
-
-        await env.SCHEDULES.delete(
-
-          `${SCHEDULE_PREFIX}${schedule.id}`,
+          now,
 
         )
 
       }
+
+
+
+      const retryUntil = new Date(
+
+        delivery.retryUntil,
+
+      ).getTime()
+
+
+
+      if (now >= retryUntil) {
+
+        console.error(
+
+          `delivery ${delivery.id}: acknowledgment timeout`,
+
+        )
+
+        await completeScheduleDelivery(
+
+          env,
+
+          delivery.id,
+
+          now,
+
+        )
+
+        continue
+
+      }
+
+
+
+      const lastAttemptTime = delivery.lastAttemptAt
+
+        ? new Date(delivery.lastAttemptAt).getTime()
+
+        : 0
+
+
+
+      if (
+
+        lastAttemptTime &&
+
+        now - lastAttemptTime <
+
+          PUSH_RETRY_INTERVAL_MS - 5000
+
+      ) {
+
+        continue
+
+      }
+
+
+
+      await sendPendingDelivery(env, delivery, now)
 
     } catch (error) {
 
@@ -1291,6 +1592,70 @@ async function handleRequest(request, env) {
         Boolean(env.VAPID_PRIVATE_KEY),
 
     })
+
+  }
+
+
+
+  if (
+
+    url.pathname === '/push-ack' &&
+
+    request.method === 'POST'
+
+  ) {
+
+    try {
+
+      const body = await request.json()
+
+      const deliveryId =
+
+        typeof body.deliveryId === 'string'
+
+          ? body.deliveryId.trim()
+
+          : ''
+
+
+
+      if (!deliveryId || deliveryId.length > 100) {
+
+        return json(
+
+          { ok: false, error: '受信確認IDが正しくありません' },
+
+          400,
+
+        )
+
+      }
+
+
+
+      const completed = await completeScheduleDelivery(
+
+        env,
+
+        deliveryId,
+
+      )
+
+
+
+      return json({ ok: true, completed })
+
+    } catch (error) {
+
+      return json(
+
+        { ok: false, error: error.message },
+
+        400,
+
+      )
+
+    }
 
   }
 
