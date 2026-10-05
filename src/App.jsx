@@ -609,10 +609,7 @@ function App() {
       <header className="app-header">
         <div className="brand">
           <img className="times-logo" src={TIMES_LOGO} alt="Times" />
-          <div className="brand-text">
-            <div className="brand-japanese">タイムズの駐車場検索</div>
-            <h1>タイムズ Parking Information</h1>
-          </div>
+          <div className="brand-position-spacer" aria-hidden="true" />
         </div>
         <p className="subtitle">タイムズ駐車場 空車情報</p>
       </header>
@@ -784,7 +781,7 @@ function App() {
                         onClick={openDatePicker}
                         aria-label="カレンダーを開く"
                       >
-                        📅
+                        
                       </button>
                     </span>
                   </label>
