@@ -26,7 +26,7 @@ const MAX_STATUS_AGE_MS = 20 * 60 * 1000
 
 const PARK_DISPLAY_NAMES = {
 
-  BUK0060527: '野田6丁目駐車場',
+  BUK0060527: 'タイムズ野田６丁目',
 
   BUK0077629: '野田6丁目第2駐車場',
 
@@ -870,33 +870,25 @@ function createParkingMessage(
 
 
 
-  const parkingLines = selected
+  const parkingLines = selected.map((park) => ({
+    name: PARK_DISPLAY_NAMES[park.id] || park.name,
+    status: park.status || '不明',
+  }))
 
-    .map((park) => {
+  if (parkingLines.length === 1) {
+    const [{ name, status }] = parkingLines
+    const title = `${name}は${status}`
+    const body = `${time}現在、${name}は${status}です${
+      recovered ? '（情報取得復旧）' : ''
+    }`
+    return `${title}\n${body}`
+  }
 
-      const name =
-
-        PARK_DISPLAY_NAMES[park.id] || park.name
-
-
-
-      return `${name} ${park.status || '不明'}`
-
-    })
-
-    .join('\n')
-
-
-
-  const heading = recovered
-
-    ? `タイムズ公式${time}更新情報（復旧）`
-
-    : `タイムズ公式${time}更新情報`
-
-
-
-  return `${heading}\n${parkingLines}`
+  const title = `タイムズ${selected.length}か所の空車情報`
+  const body = `${time}現在、${parkingLines
+    .map(({ name, status }) => `${name}は${status}`)
+    .join('、')}です${recovered ? '（情報取得復旧）' : ''}`
+  return `${title}\n${body}`
 
 }
 

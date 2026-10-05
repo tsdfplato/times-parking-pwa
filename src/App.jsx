@@ -433,7 +433,7 @@ function App() {
   }
 
   const openTimePicker = () => {
-    const [hour = '08', minute = '00'] = scheduleTime.split(':')
+    const [hour = '00', minute = '00'] = scheduleTime.split(':')
     setDraftHour(hour)
     setDraftMinute(minute)
     timeDialogRef.current?.showModal()
@@ -696,6 +696,43 @@ function App() {
         </p>
       </section>
 
+      {isGalaxyView && notifierToken && (
+        <section className="next-notification-panel">
+          <div className="next-notification-title">
+            <span aria-hidden="true">🔔</span>
+            <strong>次回通知</strong>
+          </div>
+          {scheduleLoading && schedules.length === 0 ? (
+            <p>通知予定を確認中…</p>
+          ) : schedules.length > 0 ? (
+            <>
+              <strong className="next-notification-date">
+                {formatScheduleDate(schedules[0].notifyAt)}
+              </strong>
+              <span className="next-notification-repeat">
+                {formatRepeat(schedules[0])}
+              </span>
+              <p>{getScheduleParkNames(schedules[0].parkIds)}</p>
+            </>
+          ) : (
+            <p>登録済みの通知はありません</p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setShowSchedulePanel(true)
+              window.setTimeout(() => {
+                document
+                  .getElementById('schedule-list-heading')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }, 50)
+            }}
+          >
+            登録済み通知を表示
+          </button>
+        </section>
+      )}
+
       <section className="status-summary" aria-label="空車状況集計">
         <div className="summary-item summary-free">
           <span>空車</span>
@@ -875,7 +912,10 @@ function App() {
                 </button>
                   </form>
 
-                  <div className="schedule-list-heading">
+                  <div
+                    id="schedule-list-heading"
+                    className="schedule-list-heading"
+                  >
                     <h3>登録済み通知</h3>
                     <button
                       type="button"
