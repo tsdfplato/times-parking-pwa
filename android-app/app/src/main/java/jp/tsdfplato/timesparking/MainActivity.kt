@@ -6,25 +6,21 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.view.View
+import android.view.WindowInsets
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
-    private var latestPwaReloaded = false
 
     companion object {
         private const val PWA_URL =
-            "https://tsdfplato.github.io/times-parking-pwa/?source=android-apk"
+            "https://tsdfplato.github.io/times-parking-pwa/"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,32 +29,44 @@ class MainActivity : Activity() {
         NotificationSupport.createChannel(this)
         requestNotificationPermission()
 
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-            FcmRegistration.register(applicationContext, token)
-        }
-
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        FirebaseMessaging.getInstance()
+            .token
+            .addOnSuccessListener { token ->
+                FcmRegistration.register(
+                    applicationContext,
+                    token
+                )
+            }
 
         webView = WebView(this)
         setContentView(webView)
 
-        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
-            val systemBars = insets.getInsets(
-                WindowInsetsCompat.Type.statusBars() or
-                    WindowInsetsCompat.Type.navigationBars()
-            )
+        webView.setOnApplyWindowInsetsListener { view, insets ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val systemBars = insets.getInsets(
+                    WindowInsets.Type.systemBars()
+                )
 
-            view.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                systemBars.bottom
-            )
+                view.setPadding(
+                    systemBars.left,
+                    systemBars.top,
+                    systemBars.right,
+                    systemBars.bottom
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                view.setPadding(
+                    insets.systemWindowInsetLeft,
+                    insets.systemWindowInsetTop,
+                    insets.systemWindowInsetRight,
+                    insets.systemWindowInsetBottom
+                )
+            }
 
             insets
         }
 
-        ViewCompat.requestApplyInsets(webView)
+        webView.requestApplyInsets()
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -66,8 +74,8 @@ class MainActivity : Activity() {
             databaseEnabled = true
             setGeolocationEnabled(true)
 
-            loadWithOverviewMode = false
-            useWideViewPort = false
+            loadWithOverviewMode = true
+            useWideViewPort = true
             textZoom = 100
 
             cacheMode = WebSettings.LOAD_NO_CACHE
@@ -75,93 +83,51 @@ class MainActivity : Activity() {
             displayZoomControls = false
         }
 
-        webView.isVerticalScrollBarEnabled = false
-        webView.overScrollMode = View.OVER_SCROLL_NEVER
         webView.clearCache(true)
 
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onGeolocationPermissionsShowPrompt(
-                origin: String,
-                callback: GeolocationPermissions.Callback
-            ) {
-                callback.invoke(origin, true, false)
-            }
-        }
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView,
-                request: WebResourceRequest
-            ): Boolean {
-                return if (request.url.host == "tsdfplato.github.io") {
-                    false
-                } else {
-                    startActivity(
-                        Intent(Intent.ACTION_VIEW, request.url)
-                    )
-                    true
-                }
-            }
-
-            override fun onPageFinished(
-                view: WebView,
-                url: String
-            ) {
-                super.onPageFinished(view, url)
-
-                if (
-                    latestPwaReloaded ||
-                    !url.startsWith(
-                        "https://tsdfplato.github.io/"
-                    )
+        webView.webChromeClient =
+            object : WebChromeClient() {
+                override fun onGeolocationPermissionsShowPrompt(
+                    origin: String,
+                    callback:
+                        GeolocationPermissions.Callback
                 ) {
-                    return
+                    callback.invoke(
+                        origin,
+                        true,
+                        false
+                    )
                 }
-
-                latestPwaReloaded = true
-
-                view.evaluateJavascript(
-                    """
-                    (async function () {
-                      try {
-                        if ('serviceWorker' in navigator) {
-                          const registrations =
-                            await navigator.serviceWorker
-                              .getRegistrations();
-
-                          await Promise.all(
-                            registrations.map(
-                              registration =>
-                                registration.unregister()
-                            )
-                          );
-                        }
-
-                        if ('caches' in window) {
-                          const cacheNames =
-                            await caches.keys();
-
-                          await Promise.all(
-                            cacheNames.map(
-                              name => caches.delete(name)
-                            )
-                          );
-                        }
-                      } catch (_) {}
-
-                      location.replace(
-                        '$PWA_URL&refresh=' + Date.now()
-                      );
-                    })();
-                    """.trimIndent(),
-                    null
-                )
             }
-        }
 
-        webView.loadUrl(
-            "$PWA_URL&start=${System.currentTimeMillis()}"
-        )
+        webView.webViewClient =
+            object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView,
+                    request: WebResourceRequest
+                ): Boolean {
+                    return if (
+                        request.url.host ==
+                            "tsdfplato.github.io"
+                    ) {
+                        false
+                    } else {
+                        startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                request.url
+                            )
+                        )
+                        true
+                    }
+                }
+            }
+
+        val latestUrl =
+            "$PWA_URL?source=android-apk" +
+                "&refresh=${System.currentTimeMillis()}"
+
+        webView.loadUrl(latestUrl)
     }
 
     private fun requestNotificationPermission() {
@@ -179,14 +145,6 @@ class MainActivity : Activity() {
                 1001
             )
         }
-    }
-
-    override fun onDestroy() {
-        webView.stopLoading()
-        webView.webChromeClient = null
-        webView.webViewClient = null
-        webView.destroy()
-        super.onDestroy()
     }
 
     @Deprecated("Deprecated in Java")
