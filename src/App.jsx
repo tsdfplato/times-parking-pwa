@@ -15,7 +15,6 @@ const TIMES_LOGO =
 const NOTIFIER_URL =
   'https://times-parking-notifier.kubota-mlc.workers.dev'
 const API_TOKEN_STORAGE_KEY = 'times-parking-notifier-api-token'
-const PUSH_DEVICE_ID_STORAGE_KEY = 'times-parking-push-device-id'
 const STATUS_STORAGE_KEY = 'times-parking-previous-status'
 const CHANGE_STORAGE_KEY = 'times-parking-status-changes'
 const CHANGE_DISPLAY_MS = 10 * 60 * 1000
@@ -137,23 +136,6 @@ function getInitialScheduleDate() {
   return formatter.format(new Date())
 }
 
-function formatScheduleInputDate(date) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-}
-
-function formatScheduleInputTime(date) {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Tokyo',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
 function loadStoredObject(key) {
   try {
     const saved = localStorage.getItem(key)
@@ -161,17 +143,6 @@ function loadStoredObject(key) {
   } catch {
     return {}
   }
-}
-
-function urlBase64ToUint8Array(value) {
-  const padding = '='.repeat((4 - (value.length % 4)) % 4)
-  const base64 = (value + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-  const rawData = window.atob(base64)
-  return Uint8Array.from(rawData, (character) =>
-    character.charCodeAt(0),
-  )
 }
 
 function App() {
@@ -202,9 +173,6 @@ function App() {
     localStorage.getItem(API_TOKEN_STORAGE_KEY) || '',
   )
   const [tokenInput, setTokenInput] = useState('')
-  const [pushEnabled, setPushEnabled] = useState(false)
-  const [pushLoading, setPushLoading] = useState(false)
-  const [pushMessage, setPushMessage] = useState('')
   const dateInputRef = useRef(null)
   const timeDialogRef = useRef(null)
   const [draftHour, setDraftHour] = useState('00')
@@ -222,120 +190,6 @@ function App() {
     }),
     [notifierToken],
   )
-
-  useEffect(() => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      return
-    }
-
-    navigator.serviceWorker.ready
-      .then((registration) => registration.pushManager.getSubscription())
-      .then((subscription) => setPushEnabled(Boolean(subscription)))
-      .catch(() => setPushEnabled(false))
-  }, [])
-
-  const enablePushNotifications = async () => {
-    if (!notifierToken) {
-      setScheduleError('先にAPIトークンをGalaxyへ保存してください')
-      return
-    }
-
-    if (
-      !('serviceWorker' in navigator) ||
-      !('PushManager' in window) ||
-      !('Notification' in window)
-    ) {
-      setScheduleError('この端末はPWA直接通知に対応していません')
-      return
-    }
-
-    setPushLoading(true)
-    setScheduleError('')
-    setPushMessage('')
-
-    try {
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') {
-        throw new Error('通知を許可してください')
-      }
-
-      const keyResponse = await fetch(
-        `${NOTIFIER_URL}/push-public-key`,
-        { headers: notifierHeaders },
-      )
-      const keyData = await keyResponse.json()
-      if (!keyResponse.ok || !keyData.publicKey) {
-        throw new Error(keyData.error || '通知用公開鍵を取得できませんでした')
-      }
-
-      const registration = await navigator.serviceWorker.ready
-      let subscription = await registration.pushManager.getSubscription()
-
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
-        })
-      }
-
-      let deviceId = localStorage.getItem(PUSH_DEVICE_ID_STORAGE_KEY)
-      if (!deviceId) {
-        deviceId = crypto.randomUUID()
-        localStorage.setItem(PUSH_DEVICE_ID_STORAGE_KEY, deviceId)
-      }
-
-      const saveResponse = await fetch(
-        `${NOTIFIER_URL}/push-subscriptions`,
-        {
-          method: 'POST',
-          headers: notifierHeaders,
-          body: JSON.stringify({
-            deviceId,
-            subscription: subscription.toJSON(),
-          }),
-        },
-      )
-      const saveData = await saveResponse.json()
-      if (!saveResponse.ok || !saveData.ok) {
-        throw new Error(saveData.error || 'PWA通知を登録できませんでした')
-      }
-
-      setPushEnabled(true)
-      setPushMessage('PWA直接通知を有効にしました')
-    } catch (pushError) {
-      console.error(pushError)
-      setScheduleError(
-        pushError.message || 'PWA直接通知を有効にできませんでした',
-      )
-    } finally {
-      setPushLoading(false)
-    }
-  }
-
-  const testPushNotification = async () => {
-    setPushLoading(true)
-    setScheduleError('')
-    setPushMessage('')
-
-    try {
-      const response = await fetch(`${NOTIFIER_URL}/test-push`, {
-        method: 'POST',
-        headers: notifierHeaders,
-      })
-      const data = await response.json()
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || 'PWA通知テストに失敗しました')
-      }
-      setPushMessage('PWA直接通知を送信しました')
-    } catch (pushError) {
-      console.error(pushError)
-      setScheduleError(
-        pushError.message || 'PWA通知テストに失敗しました',
-      )
-    } finally {
-      setPushLoading(false)
-    }
-  }
 
   const loadStatus = useCallback(async (manual = false) => {
     setLoading(true)
@@ -563,12 +417,23 @@ function App() {
   const openDatePicker = () => {
     const input = dateInputRef.current
     if (!input) return
-    if (typeof input.showPicker === 'function') input.showPicker()
-    else input.focus()
+
+    input.focus()
+
+    try {
+      if (typeof input.showPicker === 'function') {
+        input.showPicker()
+        return
+      }
+    } catch {
+      // Android WebViewではshowPickerが使えない機種があるためclickへ進む。
+    }
+
+    input.click()
   }
 
   const openTimePicker = () => {
-    const [hour = '00', minute = '00'] = scheduleTime.split(':')
+    const [hour = '08', minute = '00'] = scheduleTime.split(':')
     setDraftHour(hour)
     setDraftMinute(minute)
     timeDialogRef.current?.showModal()
@@ -674,8 +539,11 @@ function App() {
       }
 
       setSelectedParkIds([])
+      setSchedules((current) =>
+        [...current.filter((schedule) => schedule.id !== data.schedule.id), data.schedule]
+          .sort((a, b) => new Date(a.notifyAt) - new Date(b.notifyAt)),
+      )
       setScheduleMessage('通知予定を登録しました')
-      await loadSchedules()
       window.setTimeout(() => setScheduleMessage(''), 4000)
     } catch (fetchError) {
       console.error(fetchError)
@@ -708,8 +576,10 @@ function App() {
         throw new Error(data.error || '通知予定を削除できませんでした')
       }
 
+      setSchedules((current) =>
+        current.filter((schedule) => schedule.id !== scheduleId),
+      )
       setScheduleMessage('通知予定を削除しました')
-      await loadSchedules()
       window.setTimeout(() => setScheduleMessage(''), 4000)
     } catch (fetchError) {
       console.error(fetchError)
@@ -739,6 +609,10 @@ function App() {
       <header className="app-header">
         <div className="brand">
           <img className="times-logo" src={TIMES_LOGO} alt="Times" />
+          <div className="brand-text">
+            <div className="brand-japanese">タイムズの駐車場検索</div>
+            <h1>タイムズ Parking Information</h1>
+          </div>
         </div>
         <p className="subtitle">タイムズ駐車場 空車情報</p>
       </header>
@@ -825,51 +699,6 @@ function App() {
         </p>
       </section>
 
-      {isGalaxyView && (
-        <section className="next-notification-panel">
-          <div className="next-notification-title">
-            <span aria-hidden="true">🔔</span>
-            <strong>次回通知</strong>
-          </div>
-
-          {!notifierToken ? (
-            <p>通知設定が未登録です</p>
-          ) : scheduleLoading && schedules.length === 0 ? (
-            <p>通知予定を確認中…</p>
-          ) : schedules.length > 0 ? (
-            <>
-              <strong className="next-notification-date">
-                {formatScheduleDate(schedules[0].notifyAt)}
-              </strong>
-              <span className="next-notification-repeat">
-                {formatRepeat(schedules[0])}
-              </span>
-              <p>
-                {getScheduleParkNames(schedules[0].parkIds)}
-              </p>
-            </>
-          ) : (
-            <p>登録済みの通知はありません</p>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSchedulePanel(true)
-              window.setTimeout(() => {
-                document
-                  .getElementById('registered-schedules')
-                  ?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                  })
-              }, 50)
-            }}
-          >
-            登録済み通知を確認
-          </button>
-        </section>
-      )}
       <section className="status-summary" aria-label="空車状況集計">
         <div className="summary-item summary-free">
           <span>空車</span>
@@ -886,7 +715,7 @@ function App() {
       </section>
 
       {isGalaxyView && (
-        <section id="schedule-panel" className="schedule-panel">
+        <section className="schedule-panel">
           <button
             className="schedule-toggle-button"
             type="button"
@@ -934,64 +763,30 @@ function App() {
                     </button>
                   </div>
 
-                  <div className="push-notification-settings">
-                    <strong>PWA直接通知</strong>
-                    <p>
-                      LINEを使わず、タイムズアプリからGalaxyへ直接通知します。
-                    </p>
-                    {!pushEnabled ? (
-                      <button
-                        type="button"
-                        onClick={enablePushNotifications}
-                        disabled={pushLoading}
-                      >
-                        {pushLoading
-                          ? '設定中…'
-                          : 'PWA直接通知を有効にする'}
-                      </button>
-                    ) : (
-                      <div className="push-enabled-actions">
-                        <span>✓ 直接通知：有効</span>
-                        <button
-                          type="button"
-                          onClick={testPushNotification}
-                          disabled={pushLoading}
-                        >
-                          {pushLoading ? '送信中…' : '通知テスト'}
-                        </button>
-                      </div>
-                    )}
-                    {pushMessage && (
-                      <p className="push-success" role="status">
-                        ✓ {pushMessage}
-                      </p>
-                    )}
-                  </div>
-
                   <form onSubmit={addSchedule}>
                 <div className="schedule-datetime">
                   <label>
                     日付
                     <span className="schedule-picker-field">
-  <input
-    ref={dateInputRef}
-    type="date"
-    value={scheduleDate}
-    min={getInitialScheduleDate()}
-    onChange={(event) =>
-      setScheduleDate(event.target.value)
-    }
-    required
-  />
-  <svg
-    className="schedule-calendar-icon"
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-  >
-    <rect x="3" y="5" width="18" height="16" rx="2" />
-    <path d="M8 3v4M16 3v4M3 10h18" />
-  </svg>
-</span>
+                      <input
+                        ref={dateInputRef}
+                        type="date"
+                        value={scheduleDate}
+                        min={getInitialScheduleDate()}
+                        onChange={(event) =>
+                          setScheduleDate(event.target.value)
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="schedule-picker-button"
+                        onClick={openDatePicker}
+                        aria-label="カレンダーを開く"
+                      >
+                        📅
+                      </button>
+                    </span>
                   </label>
                   <label>
                     時刻
@@ -1006,58 +801,6 @@ function App() {
                   </label>
                 </div>
 
-                <div className="schedule-quick-settings">
-                  <span>クイック設定</span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const target = new Date(Date.now() + 5 * 60 * 1000)
-                      setScheduleDate(formatScheduleInputDate(target))
-                      setScheduleTime(formatScheduleInputTime(target))
-                    }}
-                  >
-                    5分後
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setScheduleDate(
-                        formatScheduleInputDate(new Date()),
-                      )
-                    }
-                  >
-                    今日
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setScheduleDate(
-                        formatScheduleInputDate(
-                          new Date(Date.now() + 24 * 60 * 60 * 1000),
-                        ),
-                      )
-                    }
-                  >
-                    明日
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setScheduleTime('08:00')}
-                  >
-                    08:00
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setScheduleTime('18:00')}
-                  >
-                    18:00
-                  </button>
-                </div>
                 <fieldset className="schedule-repeat">
                   <legend>繰り返し</legend>
                   <select
@@ -1111,39 +854,6 @@ function App() {
 
                 <fieldset className="schedule-parks">
                   <legend>通知する駐車場（複数選択可）</legend>
-                  <div className="schedule-park-actions">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedParkIds(
-                          sortedParks.map((park) => park.id),
-                        )
-                      }
-                    >
-                      すべて選択
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const firstPark = sortedParks.find(
-                          (park) => park.no === 1,
-                        )
-                        setSelectedParkIds(
-                          firstPark ? [firstPark.id] : [],
-                        )
-                      }}
-                    >
-                      1番のみ
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedParkIds([])}
-                    >
-                      選択解除
-                    </button>
-                  </div>
                   {sortedParks.map((park) => (
                     <label key={park.id}>
                       <input
@@ -1168,7 +878,7 @@ function App() {
                 </button>
                   </form>
 
-                  <div id="registered-schedules" className="schedule-list-heading">
+                  <div className="schedule-list-heading">
                     <h3>登録済み通知</h3>
                     <button
                       type="button"
