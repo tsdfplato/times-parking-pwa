@@ -609,7 +609,6 @@ function App() {
       <header className="app-header">
         <div className="brand">
           <img className="times-logo" src={TIMES_LOGO} alt="Times" />
-          <div className="brand-position-spacer" aria-hidden="true" />
         </div>
         <p className="subtitle">タイムズ駐車場 空車情報</p>
       </header>
@@ -818,7 +817,14 @@ function App() {
                         onClick={openDatePicker}
                         aria-label="カレンダーを開く"
                       >
-                        
+                        <svg
+                          className="schedule-picker-icon"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="5" width="18" height="16" rx="2" />
+                          <path d="M8 3v4M16 3v4M3 10h18M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2M15 17h2" />
+                        </svg>
                       </button>
                     </span>
                   </label>
@@ -1078,6 +1084,11 @@ function App() {
               >
                 <div className="number-button">{park.no}</div>
                 <div className="parking-information">
+                  {change && (
+                    <span className="change-notice">
+                      変化あり（10分間表示）
+                    </span>
+                  )}
                   <h2>{park.name}</h2>
                   {change && (
                     <div

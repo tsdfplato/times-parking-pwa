@@ -6,13 +6,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowInsets
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : Activity() {
@@ -29,44 +31,35 @@ class MainActivity : Activity() {
         NotificationSupport.createChannel(this)
         requestNotificationPermission()
 
-        FirebaseMessaging.getInstance()
-            .token
-            .addOnSuccessListener { token ->
-                FcmRegistration.register(
-                    applicationContext,
-                    token
-                )
-            }
-
-        webView = WebView(this)
-        setContentView(webView)
-
-        webView.setOnApplyWindowInsetsListener { view, insets ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val systemBars = insets.getInsets(
-                    WindowInsets.Type.systemBars()
-                )
-
-                view.setPadding(
-                    systemBars.left,
-                    systemBars.top,
-                    systemBars.right,
-                    systemBars.bottom
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                view.setPadding(
-                    insets.systemWindowInsetLeft,
-                    insets.systemWindowInsetTop,
-                    insets.systemWindowInsetRight,
-                    insets.systemWindowInsetBottom
-                )
-            }
-
-            insets
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            FcmRegistration.register(applicationContext, token)
         }
 
-        webView.requestApplyInsets()
+        // Android 15/16ではアプリがシステムバーまで描画されるため、
+        // WebView自身へ実際の上下余白を渡して、画面内容を隠さない。
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        webView = WebView(this)
+        webView.setBackgroundColor(0xFFEEF2F6.toInt())
+        setContentView(webView)
+
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or
+                    WindowInsetsCompat.Type.navigationBars() or
+                    WindowInsetsCompat.Type.displayCutout(),
+            )
+
+            // 左右のカットアウトも含め、Webページの表示領域を安全範囲へ収める。
+            view.setPadding(
+                bars.left,
+                bars.top,
+                bars.right,
+                bars.bottom,
+            )
+            insets
+        }
+        ViewCompat.requestApplyInsets(webView)
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -74,8 +67,9 @@ class MainActivity : Activity() {
             databaseEnabled = true
             setGeolocationEnabled(true)
 
-            loadWithOverviewMode = true
-            useWideViewPort = true
+            // PWAのviewport指定をそのまま使い、APK独自の縮小表示をしない。
+            loadWithOverviewMode = false
+            useWideViewPort = false
             textZoom = 100
 
             cacheMode = WebSettings.LOAD_NO_CACHE
@@ -85,64 +79,44 @@ class MainActivity : Activity() {
 
         webView.clearCache(true)
 
-        webView.webChromeClient =
-            object : WebChromeClient() {
-                override fun onGeolocationPermissionsShowPrompt(
-                    origin: String,
-                    callback:
-                        GeolocationPermissions.Callback
-                ) {
-                    callback.invoke(
-                        origin,
-                        true,
-                        false
-                    )
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback,
+            ) {
+                callback.invoke(origin, true, false)
+            }
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest,
+            ): Boolean {
+                return if (request.url.host == "tsdfplato.github.io") {
+                    false
+                } else {
+                    startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    true
                 }
             }
+        }
 
-        webView.webViewClient =
-            object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(
-                    view: WebView,
-                    request: WebResourceRequest
-                ): Boolean {
-                    return if (
-                        request.url.host ==
-                            "tsdfplato.github.io"
-                    ) {
-                        false
-                    } else {
-                        startActivity(
-                            Intent(
-                                Intent.ACTION_VIEW,
-                                request.url
-                            )
-                        )
-                        true
-                    }
-                }
-            }
-
-        val latestUrl =
-            "$PWA_URL?source=android-apk" +
-                "&refresh=${System.currentTimeMillis()}"
-
-        webView.loadUrl(latestUrl)
+        // 毎回最新のGitHub Pages版を開く。通知予約用のlocalStorageは消さない。
+        webView.loadUrl(
+            "$PWA_URL?source=android-apk&refresh=${System.currentTimeMillis()}",
+        )
     }
 
     private fun requestNotificationPermission() {
         if (
-            Build.VERSION.SDK_INT >=
-                Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(
-                arrayOf(
-                    Manifest.permission.POST_NOTIFICATIONS
-                ),
-                1001
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                1001,
             )
         }
     }
