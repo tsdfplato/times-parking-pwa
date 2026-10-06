@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Android/Firebase credentials: GitHub Secrets からビルド時だけ復元する
+android-app/app/google-services.json
+android-app/app/*.jks
+android-app/app/*.keystore
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
