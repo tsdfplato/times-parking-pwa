@@ -114,7 +114,7 @@ class MainActivity : Activity() {
         // 画面はAPK内へ同梱する。空車データと通知予約だけクラウドへアクセスする。
         // Android公式のHTTPS相当URLで開くため、file:// の通信制限にも依存しない。
         webView.loadUrl(
-            "https://appassets.androidplatform.net/assets/web/index.html?source=android-apk&v=${BuildConfig.VERSION_CODE}",
+            "https://appassets.androidplatform.net/assets/web/index.html?source=android-apk&v=${packageManager.getPackageInfo(packageName, 0).longVersionCode}",
         )
     }
 
