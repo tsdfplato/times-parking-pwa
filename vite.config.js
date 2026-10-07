@@ -2,8 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isAndroidAssetBuild =
+  process.env.VITE_ANDROID_ASSET === 'true'
+
 export default defineConfig({
-  base: '/times-parking-pwa/',
+  // APKへ同梱する版は file:///android_asset/ から読むため相対パスにする。
+  // GitHub Pages版は従来どおりリポジトリ配下の絶対パスを使う。
+  base: isAndroidAssetBuild ? './' : '/times-parking-pwa/',
 
   plugins: [
     react(),

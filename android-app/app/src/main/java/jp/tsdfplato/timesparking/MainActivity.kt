@@ -15,15 +15,12 @@ import android.webkit.WebViewClient
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.webkit.WebViewAssetLoader
 import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
-
-    companion object {
-        private const val PWA_URL =
-            "https://tsdfplato.github.io/times-parking-pwa/"
-    }
+    private lateinit var assetLoader: WebViewAssetLoader
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +86,11 @@ class MainActivity : Activity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest,
+            ) = assetLoader.shouldInterceptRequest(request.url)
+
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest,
@@ -102,9 +104,17 @@ class MainActivity : Activity() {
             }
         }
 
-        // 毎回最新のGitHub Pages版を開く。通知予約用のlocalStorageは消さない。
+        assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler(
+                "/assets/",
+                WebViewAssetLoader.AssetsPathHandler(this),
+            )
+            .build()
+
+        // 画面はAPK内へ同梱する。空車データと通知予約だけクラウドへアクセスする。
+        // Android公式のHTTPS相当URLで開くため、file:// の通信制限にも依存しない。
         webView.loadUrl(
-            "$PWA_URL?source=android-apk&refresh=${System.currentTimeMillis()}",
+            "https://appassets.androidplatform.net/assets/web/index.html?source=android-apk&v=${BuildConfig.VERSION_CODE}",
         )
     }
 

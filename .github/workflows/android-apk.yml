@@ -44,6 +44,13 @@ jobs:
             exit 1
           fi
           echo "$TIMES_KEYSTORE_BASE64" | base64 --decode > android-app/app/times-parking-release.jks
+      - name: Build APK web screen
+        run: |
+          npm ci
+          rm -rf android-app/app/src/main/assets/web
+          VITE_ANDROID_ASSET=true npm run build
+          mkdir -p android-app/app/src/main/assets/web
+          cp -R dist/. android-app/app/src/main/assets/web/
       - name: Build signed release APK
         working-directory: android-app
         env:
