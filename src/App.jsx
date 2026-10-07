@@ -19,6 +19,10 @@ const STATUS_STORAGE_KEY = 'times-parking-previous-status'
 const CHANGE_STORAGE_KEY = 'times-parking-status-changes'
 const CHANGE_DISPLAY_MS = 10 * 60 * 1000
 const CLOUD_STOP_MINUTES = 15
+const IS_ANDROID_APK = import.meta.env.VITE_ANDROID_ASSET === 'true'
+const STATUS_URL = IS_ANDROID_APK
+  ? 'https://tsdfplato.github.io/times-parking-pwa/status.json'
+  : `${import.meta.env.BASE_URL}status.json`
 const WEEKDAYS = [
   { value: 1, label: '月' },
   { value: 2, label: '火' },
@@ -127,13 +131,19 @@ function formatRepeat(schedule) {
 }
 
 function getInitialScheduleDate() {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
+  const formatter = new Intl.DateTimeFormat('ja-JP', {
     timeZone: 'Asia/Tokyo',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   })
-  return formatter.format(new Date())
+  const parts = Object.fromEntries(
+    formatter
+      .formatToParts(new Date())
+      .filter((part) => ['year', 'month', 'day'].includes(part.type))
+      .map((part) => [part.type, part.value]),
+  )
+  return `${parts.year}-${parts.month}-${parts.day}`
 }
 
 function loadStoredObject(key) {
@@ -181,7 +191,7 @@ function App() {
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW()
+  } = useRegisterSW({ immediate: !IS_ANDROID_APK })
 
   const notifierHeaders = useMemo(
     () => ({
@@ -198,7 +208,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.BASE_URL}status.json?t=${Date.now()}`,
+        `${STATUS_URL}?t=${Date.now()}`,
         {
           cache: 'no-store',
           headers: {
