@@ -21,7 +21,7 @@ const CHANGE_DISPLAY_MS = 10 * 60 * 1000
 const CLOUD_STOP_MINUTES = 15
 const IS_ANDROID_APK = import.meta.env.VITE_ANDROID_ASSET === 'true'
 const STATUS_URL = IS_ANDROID_APK
-  ? 'https://tsdfplato.github.io/times-parking-pwa/status.json'
+  ? `${NOTIFIER_URL}/status`
   : `${import.meta.env.BASE_URL}status.json`
 const WEEKDAYS = [
   { value: 1, label: '月' },
