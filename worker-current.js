@@ -50,7 +50,7 @@ const corsHeaders = {
 
   'Access-Control-Allow-Headers':
 
-    'Content-Type, X-API-Token',
+    'Content-Type, X-API-Token, Cache-Control, Pragma',
 
 }
 
@@ -1523,6 +1523,43 @@ async function handleRequest(request, env) {
 
   const url = new URL(request.url)
 
+  if (
+    url.pathname === '/status' &&
+    request.method === 'GET'
+  ) {
+    try {
+      const response = await fetch(
+        `${STATUS_URL}?t=${Date.now()}`,
+        {
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache',
+          },
+          cf: {
+            cacheTtl: 0,
+            cacheEverything: false,
+          },
+        },
+      )
+
+      return new Response(response.body, {
+        status: response.status,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      })
+    } catch {
+      return json(
+        {
+          ok: false,
+          error: '空車情報を取得できませんでした',
+        },
+        502,
+      )
+    }
+  }
 
 
   if (
