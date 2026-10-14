@@ -6,6 +6,12 @@ on:
     branches: [main]
     paths:
       - 'android-app/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.js'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/android-apk.yml'
 
 permissions:
