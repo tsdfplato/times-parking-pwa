@@ -7,19 +7,14 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
+import android.view.WindowManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import com.google.firebase.messaging.FirebaseMessaging
@@ -38,140 +33,48 @@ class MainActivity : Activity() {
             FcmRegistration.register(applicationContext, token)
         }
 
-        /*
-         * Android 15 / 16のedge-to-edge表示に対応する。
-         *
-         * WebViewへ直接paddingを付ける方式では、ページがシステムバーの
-         * 背後へ入り込む場合がある。
-         *
-         * 親FrameLayoutを画面全体に配置し、WebViewの表示領域を
-         * ステータスバーとナビゲーションバーの内側へ制限する。
-         */
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Androidに上下のシステムバー領域を確保させる。
+        WindowCompat.setDecorFitsSystemWindows(window, true)
 
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
+        )
+
+        window.clearFlags(
+            WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+        )
+
+        window.clearFlags(
+            WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
+        )
+
+        window.statusBarColor = 0xFFFFD400.toInt()
+        window.navigationBarColor = Color.WHITE
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
-        }
-
-        val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.WHITE)
         }
 
         webView = WebView(this).apply {
             setBackgroundColor(0xFFEEF2F6.toInt())
         }
 
-        val statusBarBackground = View(this).apply {
-            setBackgroundColor(0xFFFFD400.toInt())
-        }
+        setContentView(webView)
 
-        val navigationBarBackground = View(this).apply {
-            setBackgroundColor(Color.WHITE)
-        }
-
-        root.addView(
-            webView,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            ),
-        )
-
-        root.addView(
-            statusBarBackground,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                Gravity.TOP,
-            ),
-        )
-
-        root.addView(
-            navigationBarBackground,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                Gravity.BOTTOM,
-            ),
-        )
-
-        setContentView(root)
-
-        WindowInsetsControllerCompat(window, root).apply {
+        WindowInsetsControllerCompat(window, webView).apply {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
         }
-
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            val safeInsets = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or
-                    WindowInsetsCompat.Type.displayCutout(),
-            )
-
-            val statusInsets = insets.getInsets(
-                WindowInsetsCompat.Type.statusBars() or
-                    WindowInsetsCompat.Type.displayCutout(),
-            )
-
-            val navigationInsets = insets.getInsets(
-                WindowInsetsCompat.Type.navigationBars(),
-            )
-
-            val webViewLayout =
-                webView.layoutParams as FrameLayout.LayoutParams
-
-            webViewLayout.setMargins(
-                safeInsets.left,
-                statusInsets.top,
-                safeInsets.right,
-                navigationInsets.bottom,
-            )
-
-            webView.layoutParams = webViewLayout
-
-            val statusLayout =
-                statusBarBackground.layoutParams as
-                    FrameLayout.LayoutParams
-
-            statusLayout.width =
-                ViewGroup.LayoutParams.MATCH_PARENT
-
-            statusLayout.height = statusInsets.top
-            statusLayout.gravity = Gravity.TOP
-
-            statusBarBackground.layoutParams = statusLayout
-
-            val navigationLayout =
-                navigationBarBackground.layoutParams as
-                    FrameLayout.LayoutParams
-
-            navigationLayout.width =
-                ViewGroup.LayoutParams.MATCH_PARENT
-
-            navigationLayout.height = navigationInsets.bottom
-            navigationLayout.gravity = Gravity.BOTTOM
-
-            navigationBarBackground.layoutParams =
-                navigationLayout
-
-            insets
-        }
-
-        ViewCompat.requestApplyInsets(root)
 
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
             setGeolocationEnabled(true)
-
             loadWithOverviewMode = false
             useWideViewPort = false
             textZoom = 100
-
             cacheMode = WebSettings.LOAD_NO_CACHE
             builtInZoomControls = false
             displayZoomControls = false
@@ -194,9 +97,7 @@ class MainActivity : Activity() {
                 override fun shouldInterceptRequest(
                     view: WebView,
                     request: WebResourceRequest,
-                ) = assetLoader.shouldInterceptRequest(
-                    request.url,
-                )
+                ) = assetLoader.shouldInterceptRequest(request.url)
 
                 override fun shouldOverrideUrlLoading(
                     view: WebView,
@@ -216,7 +117,6 @@ class MainActivity : Activity() {
                                 request.url,
                             ),
                         )
-
                         true
                     }
                 }
@@ -226,9 +126,7 @@ class MainActivity : Activity() {
             WebViewAssetLoader.Builder()
                 .addPathHandler(
                     "/assets/",
-                    WebViewAssetLoader.AssetsPathHandler(
-                        this,
-                    ),
+                    WebViewAssetLoader.AssetsPathHandler(this),
                 )
                 .build()
 

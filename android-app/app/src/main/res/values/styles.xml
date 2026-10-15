@@ -5,29 +5,13 @@
         parent="android:style/Theme.Material.Light.NoActionBar">
 
         <item name="android:fontFamily">sans</item>
-
-        <item name="android:colorAccent">
-            @color/times_blue
-        </item>
-
-        <item name="android:statusBarColor">
-            @color/times_yellow
-        </item>
-
-        <item name="android:navigationBarColor">
-            @android:color/white
-        </item>
-
-        <item name="android:windowLightStatusBar">
-            true
-        </item>
-
-        <item name="android:windowLightNavigationBar">
-            true
-        </item>
-
-        <item name="android:windowActionModeOverlay">
-            true
-        </item>
+        <item name="android:colorAccent">@color/times_blue</item>
+        <item name="android:statusBarColor">@color/times_yellow</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowActionModeOverlay">false</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 </resources>
