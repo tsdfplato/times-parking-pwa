@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
@@ -14,7 +16,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import com.google.firebase.messaging.FirebaseMessaging
@@ -33,36 +38,99 @@ class MainActivity : Activity() {
             FcmRegistration.register(applicationContext, token)
         }
 
-        // Androidに上下のシステムバー領域を確保させる。
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         window.addFlags(
             WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
         )
-
         window.clearFlags(
             WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
         )
-
         window.clearFlags(
             WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
         )
 
-        window.statusBarColor = 0xFFFFD400.toInt()
-        window.navigationBarColor = Color.WHITE
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
         }
 
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.WHITE)
+        }
+
         webView = WebView(this).apply {
             setBackgroundColor(0xFFEEF2F6.toInt())
         }
 
-        setContentView(webView)
+        val topSystemBar = View(this).apply {
+            setBackgroundColor(0xFFFFD400.toInt())
+        }
 
-        WindowInsetsControllerCompat(window, webView).apply {
+        val bottomSystemBar = View(this).apply {
+            setBackgroundColor(Color.WHITE)
+        }
+
+        root.addView(
+            webView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+
+        root.addView(
+            topSystemBar,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                0,
+                Gravity.TOP,
+            ),
+        )
+
+        root.addView(
+            bottomSystemBar,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                0,
+                Gravity.BOTTOM,
+            ),
+        )
+
+        setContentView(root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val systemBars =
+                insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            val webViewParams =
+                webView.layoutParams as FrameLayout.LayoutParams
+
+            webViewParams.topMargin = systemBars.top
+            webViewParams.bottomMargin = systemBars.bottom
+            webView.layoutParams = webViewParams
+
+            val topParams =
+                topSystemBar.layoutParams as FrameLayout.LayoutParams
+
+            topParams.height = systemBars.top
+            topSystemBar.layoutParams = topParams
+
+            val bottomParams =
+                bottomSystemBar.layoutParams as FrameLayout.LayoutParams
+
+            bottomParams.height = systemBars.bottom
+            bottomSystemBar.layoutParams = bottomParams
+
+            WindowInsetsCompat.CONSUMED
+        }
+
+        ViewCompat.requestApplyInsets(root)
+
+        WindowInsetsControllerCompat(window, root).apply {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
         }

@@ -20,18 +20,22 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
+
       - name: Restore Firebase configuration
         env:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
@@ -41,6 +45,7 @@ jobs:
             exit 1
           fi
           echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android-app/app/google-services.json
+
       - name: Restore Android signing key
         env:
           TIMES_KEYSTORE_BASE64: ${{ secrets.TIMES_KEYSTORE_BASE64 }}
@@ -50,6 +55,7 @@ jobs:
             exit 1
           fi
           echo "$TIMES_KEYSTORE_BASE64" | base64 --decode > android-app/app/times-parking-release.jks
+
       - name: Build APK web screen
         run: |
           npm ci
@@ -57,6 +63,7 @@ jobs:
           VITE_ANDROID_ASSET=true npm run build
           mkdir -p android-app/app/src/main/assets/web
           cp -R dist/. android-app/app/src/main/assets/web/
+
       - name: Build signed release APK
         working-directory: android-app
         env:
@@ -66,8 +73,9 @@ jobs:
           TIMES_KEY_PASSWORD: ${{ secrets.TIMES_KEY_PASSWORD }}
           TIMES_VERSION_CODE: ${{ github.run_number }}
         run: gradle assembleRelease --stacktrace
+
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: times-parking-android-release
           path: android-app/app/build/outputs/apk/release/app-release.apk
