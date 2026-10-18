@@ -21,6 +21,7 @@ const PUSH_RETRY_LIMIT_MS = 10 * 60 * 1000
 const LAST_LINE_USER_KEY = 'line:last-user'
 
 const MAX_STATUS_AGE_MS = 20 * 60 * 1000
+const FCM_PREFIX = 'fcm:'
 
 
 
@@ -765,9 +766,253 @@ async function sendWebPushToAll(env, message, options = {}) {
   return { total: subscriptions.length, sent, failed }
 }
 
+
+
+function getFirebaseServiceAccount(env) {
+  const raw =
+    env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+    env.FIREBASE_SERVICE_ACCOUNT
+
+  if (!raw) {
+    throw new Error('Firebaseサービスアカウントが設定されていません')
+  }
+
+  const account =
+    typeof raw === 'string' ? JSON.parse(raw) : raw
+
+  if (
+    !account.project_id ||
+    !account.client_email ||
+    !account.private_key
+  ) {
+    throw new Error('Firebaseサービスアカウントの内容が正しくありません')
+  }
+
+  return account
+}
+
+function pemPrivateKeyToBytes(pem) {
+  const base64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/\s/g, '')
+
+  const binary = atob(base64)
+  return Uint8Array.from(
+    binary,
+    (character) => character.charCodeAt(0),
+  )
+}
+
+async function getFirebaseAccessToken(env) {
+  const account = getFirebaseServiceAccount(env)
+  const encoder = new TextEncoder()
+  const now = Math.floor(Date.now() / 1000)
+
+  const header = bytesToBase64Url(
+    encoder.encode(
+      JSON.stringify({
+        alg: 'RS256',
+        typ: 'JWT',
+      }),
+    ),
+  )
+
+  const claim = bytesToBase64Url(
+    encoder.encode(
+      JSON.stringify({
+        iss: account.client_email,
+        scope:
+          'https://www.googleapis.com/auth/firebase.messaging',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now,
+        exp: now + 3600,
+      }),
+    ),
+  )
+
+  const unsignedToken = `${header}.${claim}`
+
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    pemPrivateKeyToBytes(account.private_key),
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign'],
+  )
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    privateKey,
+    encoder.encode(unsignedToken),
+  )
+
+  const assertion =
+    `${unsignedToken}.${bytesToBase64Url(signature)}`
+
+  const response = await fetch(
+    'https://oauth2.googleapis.com/token',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type':
+          'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type:
+          'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion,
+      }),
+    },
+  )
+
+  const result = await response.json()
+
+  if (!response.ok || !result.access_token) {
+    throw new Error(
+      `Firebase認証に失敗しました: ${response.status} ${JSON.stringify(result)}`,
+    )
+  }
+
+  return {
+    accessToken: result.access_token,
+    projectId: account.project_id,
+  }
+}
+
+async function listFcmDevices(env) {
+  const listed = await env.SCHEDULES.list({
+    prefix: FCM_PREFIX,
+  })
+
+  const devices = await Promise.all(
+    listed.keys.map(async ({ name }) => {
+      const value = await env.SCHEDULES.get(
+        name,
+        'json',
+      )
+      return value
+        ? {
+            key: name,
+            ...value,
+          }
+        : null
+    }),
+  )
+
+  return devices.filter(Boolean)
+}
+
+async function sendFcmToAll(env, message) {
+  const devices = await listFcmDevices(env)
+  const [title, ...bodyLines] = message.split('\n')
+  const body = bodyLines.join('\n') || title
+  let sent = 0
+  let failed = 0
+
+  if (devices.length === 0) {
+    return {
+      total: 0,
+      sent: 0,
+      failed: 0,
+    }
+  }
+
+  const { accessToken, projectId } =
+    await getFirebaseAccessToken(env)
+
+  for (const device of devices) {
+    try {
+      const response = await fetch(
+        `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type':
+              'application/json; charset=utf-8',
+          },
+          body: JSON.stringify({
+            message: {
+              token: device.token,
+              data: {
+                title:
+                  title ||
+                  'タイムズ Parking Information',
+                body,
+                notificationId: String(
+                  Math.floor(
+                    Date.now() % 2147483647,
+                  ),
+                ),
+              },
+              android: {
+                priority: 'HIGH',
+                ttl: '86400s',
+              },
+            },
+          }),
+        },
+      )
+
+      if (response.ok) {
+        sent += 1
+      } else {
+        failed += 1
+        const responseText =
+          await response.text()
+
+        console.error(
+          `FCM ${response.status}: ${responseText}`,
+        )
+
+        if (
+          response.status === 404 ||
+          responseText.includes('UNREGISTERED') ||
+          responseText.includes(
+            'registration-token-not-registered',
+          )
+        ) {
+          await env.SCHEDULES.delete(device.key)
+        }
+      }
+    } catch (error) {
+      failed += 1
+      console.error(
+        `FCM error: ${error?.message || String(error)}`,
+      )
+    }
+  }
+
+  return {
+    total: devices.length,
+    sent,
+    failed,
+  }
+}
+
 async function sendPreferredNotification(env, message) {
-  const pushResult = await sendWebPushToAll(env, message)
-  return { channel: 'web-push', ...pushResult }
+  const fcmResult = await sendFcmToAll(env, message)
+
+  if (fcmResult.sent > 0) {
+    return {
+      channel: 'fcm',
+      ...fcmResult,
+    }
+  }
+
+  const pushResult = await sendWebPushToAll(
+    env,
+    message,
+  )
+
+  return {
+    channel: 'web-push',
+    ...pushResult,
+  }
 }
 
 
@@ -1156,73 +1401,47 @@ async function createPendingDelivery(
 
 
 async function sendPendingDelivery(env, delivery, now) {
-
-  const result = await sendWebPushToAll(
-
+  const result = await sendFcmToAll(
     env,
-
     delivery.message,
-
-    {
-
-      deliveryId: delivery.id,
-
-      ackUrl: PUSH_ACK_URL,
-
-      tag: `times-parking-${delivery.scheduleId}`,
-
-      renotify: false,
-
-      androidOnly: true,
-
-    },
-
   )
-
-
 
   const deliveryKey =
-
     `${DELIVERY_PREFIX}${delivery.id}`
 
-  const stillPending = await env.SCHEDULES.get(
-
-    deliveryKey,
-
-    'json',
-
-  )
-
-
-
-  if (stillPending) {
-
-    await env.SCHEDULES.put(
-
-      deliveryKey,
-
-      JSON.stringify({
-
-        ...stillPending,
-
-        attempts: (stillPending.attempts || 0) + 1,
-
-        lastAttemptAt: new Date(now).toISOString(),
-
-        lastResult: result,
-
-      }),
-
-      { expirationTtl: 86400 },
-
+  if (result.sent > 0) {
+    await completeScheduleDelivery(
+      env,
+      delivery.id,
+      now,
     )
 
+    return result
   }
 
+  const stillPending = await env.SCHEDULES.get(
+    deliveryKey,
+    'json',
+  )
 
+  if (stillPending) {
+    await env.SCHEDULES.put(
+      deliveryKey,
+      JSON.stringify({
+        ...stillPending,
+        attempts:
+          (stillPending.attempts || 0) + 1,
+        lastAttemptAt:
+          new Date(now).toISOString(),
+        lastResult: result,
+      }),
+      {
+        expirationTtl: 86400,
+      },
+    )
+  }
 
   return result
-
 }
 
 
@@ -1562,6 +1781,68 @@ async function handleRequest(request, env) {
   }
 
 
+
+  if (
+    url.pathname === '/fcm-devices' &&
+    request.method === 'POST'
+  ) {
+    try {
+      const body = await request.json()
+      const deviceId =
+        typeof body.deviceId === 'string'
+          ? body.deviceId.trim()
+          : ''
+      const token =
+        typeof body.token === 'string'
+          ? body.token.trim()
+          : ''
+
+      if (
+        !deviceId ||
+        deviceId.length > 200 ||
+        token.length < 20 ||
+        token.length > 4096
+      ) {
+        return json(
+          {
+            ok: false,
+            error: 'FCM端末情報が正しくありません',
+          },
+          400,
+        )
+      }
+
+      await env.SCHEDULES.put(
+        `${FCM_PREFIX}${deviceId}`,
+        JSON.stringify({
+          deviceId,
+          token,
+          platform:
+            typeof body.platform === 'string'
+              ? body.platform
+              : 'android',
+          updatedAt:
+            new Date().toISOString(),
+        }),
+      )
+
+      return json({
+        ok: true,
+        deviceId,
+      })
+    } catch (error) {
+      return json(
+        {
+          ok: false,
+          error:
+            error?.message || String(error),
+        },
+        400,
+      )
+    }
+  }
+
+
   if (
 
     url.pathname === '/line-webhook' &&
@@ -1619,6 +1900,13 @@ async function handleRequest(request, env) {
       vapidPrivateKeyConfigured:
 
         Boolean(env.VAPID_PRIVATE_KEY),
+
+      firebaseConfigured:
+
+        Boolean(
+          env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+          env.FIREBASE_SERVICE_ACCOUNT,
+        ),
 
     })
 
@@ -1708,6 +1996,62 @@ async function handleRequest(request, env) {
 
   }
 
+
+
+
+  if (
+    url.pathname === '/fcm-devices' &&
+    request.method === 'GET'
+  ) {
+    const devices = await listFcmDevices(env)
+
+    return json({
+      ok: true,
+      devices: devices.map((device) => ({
+        deviceId: device.deviceId,
+        platform: device.platform,
+        updatedAt: device.updatedAt,
+      })),
+    })
+  }
+
+  if (
+    url.pathname === '/test-fcm' &&
+    request.method === 'POST'
+  ) {
+    try {
+      const result = await sendFcmToAll(
+        env,
+        'タイムズ野田６丁目は空車\n00:00現在、タイムズ野田６丁目は空車です',
+      )
+
+      if (result.sent === 0) {
+        return json(
+          {
+            ok: false,
+            error:
+              'FCM送信先が登録されていません',
+            result,
+          },
+          404,
+        )
+      }
+
+      return json({
+        ok: true,
+        result,
+      })
+    } catch (error) {
+      return json(
+        {
+          ok: false,
+          error:
+            error?.message || String(error),
+        },
+        502,
+      )
+    }
+  }
 
 
   if (
@@ -2233,3 +2577,4 @@ export default {
   },
 
 }
+
