@@ -444,3 +444,103 @@ button { touch-action: manipulation; }
     height: 20px;
   }
 }
+
+
+/* システム稼働状況 */
+.system-status-panel {
+  width: min(1180px, calc(100% - 24px));
+  margin: 10px auto 0;
+  padding: 10px 12px;
+  color: #172b43;
+  background: #f4f8fc;
+  border: 1px solid #cad8e5;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.system-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.system-status-heading > strong {
+  color: #0758a5;
+  font-size: 0.82rem;
+}
+
+.system-status-heading > span {
+  padding: 3px 8px;
+  color: #075d2c;
+  background: #e1f5e7;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.system-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.system-status-item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 8px;
+  background: #fff;
+  border: 1px solid #dce5ed;
+  border-radius: 8px;
+}
+
+.system-status-label {
+  color: #607080;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.system-status-item > strong {
+  overflow: hidden;
+  color: #172b43;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-status-panel.has-problem {
+  background: #fff0f0;
+  border-color: #d52b2b;
+}
+
+.system-status-panel.has-problem .system-status-heading > strong {
+  color: #b1111b;
+}
+
+.system-status-panel.has-problem .system-status-heading > span {
+  color: #fff;
+  background: #c51d28;
+}
+
+@media (max-width: 620px) {
+  .system-status-panel {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    padding: 9px 10px;
+  }
+
+  .system-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .system-status-item {
+    padding: 6px 7px;
+  }
+
+  .system-status-item > strong {
+    font-size: 0.7rem;
+  }
+}

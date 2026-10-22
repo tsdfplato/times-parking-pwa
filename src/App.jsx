@@ -399,6 +399,40 @@ function App() {
   const updateStopped =
     cloudAgeMinutes !== null && cloudAgeMinutes >= CLOUD_STOP_MINUTES
 
+  const systemHasProblem = Boolean(error) || updateStopped
+
+  const cloudStatusText = error
+    ? '取得失敗'
+    : updateStopped
+      ? '停止'
+      : loading && !cloudFetchedAt
+        ? '確認中'
+        : '正常'
+
+  const parkingDataAgeText =
+    cloudAgeMinutes === null
+      ? '確認中'
+      : cloudAgeMinutes === 0
+        ? '1分未満'
+        : `${cloudAgeMinutes}分前`
+
+  const galaxyNotificationText = IS_ANDROID_APK
+    ? '有効'
+    : isGalaxyView
+      ? notifierToken
+        ? '設定済み'
+        : '未設定'
+      : 'APKで稼働'
+
+  const nextNotificationText =
+    isGalaxyView && notifierToken
+      ? scheduleLoading
+        ? '確認中'
+        : schedules.length > 0
+          ? formatScheduleDate(schedules[0].notifyAt)
+          : '登録なし'
+      : 'APKで確認'
+
   const selectPark = (park) => {
     setSelectedPark(park)
     setShowMap(true)
@@ -703,6 +737,52 @@ function App() {
         <p className="cloud-update-note">
           5分ごとにクラウドで自動更新
         </p>
+      </section>
+
+      <section
+        className={
+          `system-status-panel ${
+            systemHasProblem ? 'has-problem' : ''
+          }`
+        }
+        aria-label="システム稼働状況"
+      >
+        <div className="system-status-heading">
+          <strong>システム状態</strong>
+          <span>
+            {systemHasProblem ? '要確認' : '正常稼働中'}
+          </span>
+        </div>
+
+        <div className="system-status-grid">
+          <div className="system-status-item">
+            <span className="system-status-label">
+              クラウド
+            </span>
+            <strong>{cloudStatusText}</strong>
+          </div>
+
+          <div className="system-status-item">
+            <span className="system-status-label">
+              空車情報
+            </span>
+            <strong>{parkingDataAgeText}</strong>
+          </div>
+
+          <div className="system-status-item">
+            <span className="system-status-label">
+              Galaxy通知
+            </span>
+            <strong>{galaxyNotificationText}</strong>
+          </div>
+
+          <div className="system-status-item">
+            <span className="system-status-label">
+              次回通知
+            </span>
+            <strong>{nextNotificationText}</strong>
+          </div>
+        </div>
       </section>
 
       {isGalaxyView && notifierToken && (
