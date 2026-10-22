@@ -544,3 +544,90 @@ button { touch-action: manipulation; }
     font-size: 0.7rem;
   }
 }
+
+
+/* Galaxy FCM通知テスト */
+.notification-test-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 10px;
+  align-items: center;
+  width: min(1180px, calc(100% - 24px));
+  margin: 10px auto 0;
+  padding: 10px 12px;
+  color: #172b43;
+  background: #fff8d9;
+  border: 1px solid #e0c453;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.notification-test-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notification-test-text > strong {
+  color: #664d00;
+  font-size: 0.8rem;
+}
+
+.notification-test-text > span {
+  color: #645f4c;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.notification-test-panel > button {
+  min-width: 132px;
+  min-height: 42px;
+  padding: 7px 10px;
+  color: #fff;
+  background: #0758a5;
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.notification-test-panel > button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.notification-test-success,
+.notification-test-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.notification-test-success {
+  color: #075d2c;
+  background: #e1f5e7;
+}
+
+.notification-test-error {
+  color: #a10e18;
+  background: #ffe5e7;
+}
+
+@media (max-width: 620px) {
+  .notification-test-panel {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    padding: 9px 10px;
+  }
+
+  .notification-test-panel > button {
+    min-width: 112px;
+    padding: 6px 8px;
+    font-size: 0.66rem;
+  }
+}

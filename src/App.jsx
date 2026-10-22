@@ -179,6 +179,12 @@ function App() {
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [scheduleMessage, setScheduleMessage] = useState('')
   const [scheduleError, setScheduleError] = useState('')
+  const [notificationTestLoading, setNotificationTestLoading] =
+    useState(false)
+  const [notificationTestMessage, setNotificationTestMessage] =
+    useState('')
+  const [notificationTestError, setNotificationTestError] =
+    useState('')
   const [notifierToken, setNotifierToken] = useState(() =>
     localStorage.getItem(API_TOKEN_STORAGE_KEY) || '',
   )
@@ -525,6 +531,57 @@ function App() {
     setScheduleError('')
   }
 
+  const testFcmNotification = async () => {
+    setNotificationTestMessage('')
+    setNotificationTestError('')
+
+    if (!notifierToken) {
+      setNotificationTestError(
+        '先に通知予約画面でAPIトークンを登録してください',
+      )
+      return
+    }
+
+    setNotificationTestLoading(true)
+
+    try {
+      const response = await fetch(
+        `${NOTIFIER_URL}/test-fcm`,
+        {
+          method: 'POST',
+          cache: 'no-store',
+          headers: notifierHeaders,
+          body: JSON.stringify({}),
+        },
+      )
+
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          data.error || 'テスト通知を送信できませんでした',
+        )
+      }
+
+      setNotificationTestMessage(
+        'Galaxyへテスト通知を送信しました',
+      )
+
+      window.setTimeout(() => {
+        setNotificationTestMessage('')
+      }, 5000)
+    } catch (testError) {
+      console.error(testError)
+
+      setNotificationTestError(
+        testError.message ||
+          'テスト通知を送信できませんでした',
+      )
+    } finally {
+      setNotificationTestLoading(false)
+    }
+  }
+
   const addSchedule = async (event) => {
     event.preventDefault()
     setScheduleMessage('')
@@ -784,6 +841,48 @@ function App() {
           </div>
         </div>
       </section>
+
+      {IS_ANDROID_APK && (
+        <section
+          className="notification-test-panel"
+          aria-label="Galaxy通知テスト"
+        >
+          <div className="notification-test-text">
+            <strong>Galaxy通知テスト</strong>
+            <span>
+              アプリを閉じた状態でも通知できるか確認します
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={testFcmNotification}
+            disabled={notificationTestLoading}
+          >
+            {notificationTestLoading
+              ? '送信中…'
+              : '今すぐ通知テスト'}
+          </button>
+
+          {notificationTestMessage && (
+            <p
+              className="notification-test-success"
+              role="status"
+            >
+              ✓ {notificationTestMessage}
+            </p>
+          )}
+
+          {notificationTestError && (
+            <p
+              className="notification-test-error"
+              role="alert"
+            >
+              {notificationTestError}
+            </p>
+          )}
+        </section>
+      )}
 
       {isGalaxyView && notifierToken && (
         <section className="next-notification-panel">
