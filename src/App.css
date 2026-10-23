@@ -631,3 +631,70 @@ button { touch-action: manipulation; }
     font-size: 0.66rem;
   }
 }
+
+
+/* 通知予約編集 */
+.schedule-form-editing {
+  margin-top: 10px;
+  padding: 10px;
+  background: #eef6ff;
+  border: 2px solid #0758a5;
+  border-radius: 10px;
+}
+
+.schedule-edit-notice {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  color: #0758a5;
+  background: #fff;
+  border: 1px solid #8db9df;
+  border-radius: 8px;
+}
+
+.schedule-edit-notice strong {
+  font-size: 0.84rem;
+}
+
+.schedule-edit-notice span {
+  color: #526273;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.schedule-cancel-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 8px;
+  color: #0758a5;
+  font-weight: 900;
+  background: #fff;
+  border: 1px solid #0758a5;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.schedule-item-actions {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.schedule-item .schedule-edit-button {
+  min-width: 58px;
+  color: #fff;
+  background: #0758a5;
+}
+
+.schedule-item .schedule-delete-button {
+  min-width: 58px;
+  color: #fff;
+  background: #c5222e;
+}
+
+.schedule-item-actions button:disabled,
+.schedule-cancel-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

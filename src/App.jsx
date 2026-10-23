@@ -179,6 +179,7 @@ function App() {
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [scheduleMessage, setScheduleMessage] = useState('')
   const [scheduleError, setScheduleError] = useState('')
+  const [editingScheduleId, setEditingScheduleId] = useState(null)
   const [notificationTestLoading, setNotificationTestLoading] =
     useState(false)
   const [notificationTestMessage, setNotificationTestMessage] =
@@ -502,6 +503,75 @@ function App() {
     )
   }
 
+  const resetScheduleForm = () => {
+    setEditingScheduleId(null)
+    setScheduleDate(getInitialScheduleDate())
+    setScheduleTime('00:00')
+    setRepeatType('none')
+    setRepeatWeekdays([])
+    setIntervalHours(1)
+    setSelectedParkIds([])
+  }
+
+  const editSchedule = (schedule) => {
+    const notifyAt = new Date(schedule.notifyAt)
+
+    if (Number.isNaN(notifyAt.getTime())) {
+      setScheduleError('通知日時を読み込めませんでした')
+      return
+    }
+
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      })
+        .formatToParts(notifyAt)
+        .filter((part) =>
+          ['year', 'month', 'day', 'hour', 'minute'].includes(
+            part.type,
+          ),
+        )
+        .map((part) => [part.type, part.value]),
+    )
+
+    const repeat = schedule.repeat || { type: 'none' }
+
+    setEditingScheduleId(schedule.id)
+    setScheduleDate(
+      `${parts.year}-${parts.month}-${parts.day}`,
+    )
+    setScheduleTime(`${parts.hour}:${parts.minute}`)
+    setRepeatType(repeat.type || 'none')
+    setRepeatWeekdays(
+      Array.isArray(repeat.weekdays)
+        ? repeat.weekdays
+        : [],
+    )
+    setIntervalHours(repeat.intervalHours || 1)
+    setSelectedParkIds(
+      Array.isArray(schedule.parkIds)
+        ? schedule.parkIds
+        : [],
+    )
+    setScheduleMessage('')
+    setScheduleError('')
+
+    window.setTimeout(() => {
+      document
+        .getElementById('schedule-edit-form')
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+    }, 50)
+  }
+
   const saveNotifierToken = (event) => {
     event.preventDefault()
     const nextToken = tokenInput.trim()
@@ -618,8 +688,14 @@ function App() {
     setScheduleLoading(true)
 
     try {
-      const response = await fetch(`${NOTIFIER_URL}/schedules`, {
-        method: 'POST',
+      const scheduleUrl = editingScheduleId
+        ? `${NOTIFIER_URL}/schedules/${encodeURIComponent(
+            editingScheduleId,
+          )}`
+        : `${NOTIFIER_URL}/schedules`
+
+      const response = await fetch(scheduleUrl, {
+        method: editingScheduleId ? 'PUT' : 'POST',
         headers: notifierHeaders,
         body: JSON.stringify({
           notifyAt: notifyAt.toISOString(),
@@ -636,20 +712,33 @@ function App() {
       const data = await response.json()
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || '通知予定を登録できませんでした')
+        throw new Error(
+          data.error ||
+            (editingScheduleId
+              ? '通知予定を更新できませんでした'
+              : '通知予定を登録できませんでした'),
+        )
       }
 
-      setSelectedParkIds([])
+      const wasEditing = Boolean(editingScheduleId)
+      resetScheduleForm()
       setSchedules((current) =>
         [...current.filter((schedule) => schedule.id !== data.schedule.id), data.schedule]
           .sort((a, b) => new Date(a.notifyAt) - new Date(b.notifyAt)),
       )
-      setScheduleMessage('通知予定を登録しました')
+      setScheduleMessage(
+        wasEditing
+          ? '通知予定を更新しました'
+          : '通知予定を登録しました',
+      )
       window.setTimeout(() => setScheduleMessage(''), 4000)
     } catch (fetchError) {
       console.error(fetchError)
       setScheduleError(
-        fetchError.message || '通知予定を登録できませんでした',
+        fetchError.message ||
+          (editingScheduleId
+            ? '通知予定を更新できませんでした'
+            : '通知予定を登録できませんでした'),
       )
     } finally {
       setScheduleLoading(false)
@@ -985,7 +1074,23 @@ function App() {
                     </button>
                   </div>
 
-                  <form onSubmit={addSchedule}>
+                  <form
+                    id="schedule-edit-form"
+                    onSubmit={addSchedule}
+                    className={
+                      editingScheduleId
+                        ? 'schedule-form schedule-form-editing'
+                        : 'schedule-form'
+                    }
+                  >
+                    {editingScheduleId && (
+                      <div className="schedule-edit-notice">
+                        <strong>通知予約を編集中</strong>
+                        <span>
+                          日時・繰り返し・駐車場を変更して保存してください
+                        </span>
+                      </div>
+                    )}
                 <div className="schedule-datetime">
                   <label>
                     日付
@@ -1103,8 +1208,23 @@ function App() {
                   type="submit"
                   disabled={scheduleLoading}
                 >
-                  {scheduleLoading ? '処理中…' : 'この日時で通知予約'}
+                  {scheduleLoading
+                    ? '処理中…'
+                    : editingScheduleId
+                      ? '変更内容を保存'
+                      : 'この日時で通知予約'}
                 </button>
+
+                {editingScheduleId && (
+                  <button
+                    className="schedule-cancel-button"
+                    type="button"
+                    onClick={resetScheduleForm}
+                    disabled={scheduleLoading}
+                  >
+                    編集をキャンセル
+                  </button>
+                )}
                   </form>
 
                   <div
@@ -1143,15 +1263,29 @@ function App() {
                               {getScheduleParkNames(schedule.parkIds)}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              deleteSchedule(schedule.id)
-                            }
-                            disabled={scheduleLoading}
-                          >
-                            削除
-                          </button>
+                          <div className="schedule-item-actions">
+                            <button
+                              className="schedule-edit-button"
+                              type="button"
+                              onClick={() =>
+                                editSchedule(schedule)
+                              }
+                              disabled={scheduleLoading}
+                            >
+                              編集
+                            </button>
+
+                            <button
+                              className="schedule-delete-button"
+                              type="button"
+                              onClick={() =>
+                                deleteSchedule(schedule.id)
+                              }
+                              disabled={scheduleLoading}
+                            >
+                              削除
+                            </button>
+                          </div>
                         </article>
                       ))}
                     </div>

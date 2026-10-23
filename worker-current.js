@@ -2504,6 +2504,111 @@ async function handleRequest(request, env) {
 
 
 
+  const updateScheduleMatch = url.pathname.match(
+    /^\/schedules\/([^/]+)$/,
+  )
+
+  if (
+    updateScheduleMatch &&
+    request.method === 'PUT'
+  ) {
+    try {
+      const id = decodeURIComponent(
+        updateScheduleMatch[1],
+      )
+
+      const currentSchedule = await env.SCHEDULES.get(
+        `${SCHEDULE_PREFIX}${id}`,
+        'json',
+      )
+
+      if (!currentSchedule) {
+        return json(
+          {
+            ok: false,
+            error: '通知予定が見つかりません',
+          },
+          404,
+        )
+      }
+
+      const body = await request.json()
+      const notifyAt = new Date(body.notifyAt)
+
+      if (
+        Number.isNaN(notifyAt.getTime()) ||
+        notifyAt.getTime() <= Date.now()
+      ) {
+        return json(
+          {
+            ok: false,
+            error: '通知日時が正しくありません',
+          },
+          400,
+        )
+      }
+
+      const parkIds = Array.isArray(body.parkIds)
+        ? [
+            ...new Set(
+              body.parkIds.filter(
+                (parkId) =>
+                  typeof parkId === 'string',
+              ),
+            ),
+          ]
+        : []
+
+      if (parkIds.length === 0) {
+        return json(
+          {
+            ok: false,
+            error: '駐車場を選択してください',
+          },
+          400,
+        )
+      }
+
+      if (currentSchedule.pendingDeliveryId) {
+        await env.SCHEDULES.delete(
+          `${DELIVERY_PREFIX}${currentSchedule.pendingDeliveryId}`,
+        )
+      }
+
+      const schedule = {
+        id,
+        notifyAt: notifyAt.toISOString(),
+        parkIds,
+        repeat: normalizeRepeat(body.repeat),
+        createdAt:
+          currentSchedule.createdAt ||
+          new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      await env.SCHEDULES.put(
+        `${SCHEDULE_PREFIX}${id}`,
+        JSON.stringify(schedule),
+      )
+
+      return json({
+        ok: true,
+        schedule,
+      })
+    } catch (error) {
+      return json(
+        {
+          ok: false,
+          error:
+            error?.message || String(error),
+        },
+        400,
+      )
+    }
+  }
+
+
+
   const deleteMatch = url.pathname.match(
 
     /^\/schedules\/([^/]+)$/,
