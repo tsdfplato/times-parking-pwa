@@ -155,6 +155,64 @@ function loadStoredObject(key) {
   }
 }
 
+function getReadableErrorMessage(error, fallbackMessage) {
+  const originalMessage =
+    typeof error?.message === 'string'
+      ? error.message.trim()
+      : ''
+
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.onLine === false
+  ) {
+    return 'インターネットに接続されていません。通信状態を確認してください'
+  }
+
+  if (
+    /failed to fetch|networkerror|network request failed|load failed/i.test(
+      originalMessage,
+    )
+  ) {
+    return 'サーバーに接続できませんでした。通信状態またはクラウドの稼働状況を確認してください'
+  }
+
+  if (
+    /認証|unauthorized|forbidden|http\s*(401|403)/i.test(
+      originalMessage,
+    )
+  ) {
+    return '認証に失敗しました。保存されているAPIトークンを確認してください'
+  }
+
+  if (
+    /too many requests|rate limit|http\s*429/i.test(
+      originalMessage,
+    )
+  ) {
+    return 'アクセスが集中しています。しばらく待ってから再度お試しください'
+  }
+
+  if (/http\s*404|not found/i.test(originalMessage)) {
+    return '必要なクラウド機能が見つかりません。Workerのデプロイ状態を確認してください'
+  }
+
+  if (
+    /http\s*5\d\d|internal server error|bad gateway|service unavailable/i.test(
+      originalMessage,
+    )
+  ) {
+    return 'クラウド側で障害が発生しています。しばらく待ってから再度お試しください'
+  }
+
+  if (
+    /unexpected token|json|解析|parse/i.test(originalMessage)
+  ) {
+    return 'クラウドから正しいデータを受信できませんでした'
+  }
+
+  return originalMessage || fallbackMessage
+}
+
 function App() {
   const [parks, setParks] = useState([])
   const [changes, setChanges] = useState({})
@@ -226,7 +284,9 @@ function App() {
       )
 
       if (!response.ok) {
-        throw new Error('空車情報を取得できませんでした')
+        throw new Error(
+          `空車情報を取得できませんでした（HTTP ${response.status}）`,
+        )
       }
 
       const data = await response.json()
@@ -280,7 +340,12 @@ function App() {
       }
     } catch (fetchError) {
       console.error(fetchError)
-      setError('空車情報を取得できませんでした')
+      setError(
+        getReadableErrorMessage(
+          fetchError,
+          '空車情報を取得できませんでした',
+        ),
+      )
     } finally {
       setLoading(false)
     }
@@ -311,7 +376,12 @@ function App() {
       )
     } catch (fetchError) {
       console.error(fetchError)
-      setScheduleError('通知予定を取得できませんでした')
+      setScheduleError(
+        getReadableErrorMessage(
+          fetchError,
+          '通知予定を取得できませんでした',
+        ),
+      )
     } finally {
       setScheduleLoading(false)
     }
@@ -644,8 +714,10 @@ function App() {
       console.error(testError)
 
       setNotificationTestError(
-        testError.message ||
+        getReadableErrorMessage(
+          testError,
           'テスト通知を送信できませんでした',
+        ),
       )
     } finally {
       setNotificationTestLoading(false)
@@ -735,10 +807,12 @@ function App() {
     } catch (fetchError) {
       console.error(fetchError)
       setScheduleError(
-        fetchError.message ||
-          (editingScheduleId
+        getReadableErrorMessage(
+          fetchError,
+          editingScheduleId
             ? '通知予定を更新できませんでした'
-            : '通知予定を登録できませんでした'),
+            : '通知予定を登録できませんでした',
+        ),
       )
     } finally {
       setScheduleLoading(false)
@@ -774,7 +848,10 @@ function App() {
     } catch (fetchError) {
       console.error(fetchError)
       setScheduleError(
-        fetchError.message || '通知予定を削除できませんでした',
+        getReadableErrorMessage(
+          fetchError,
+          '通知予定を削除できませんでした',
+        ),
       )
     } finally {
       setScheduleLoading(false)
@@ -875,7 +952,11 @@ function App() {
             分間止まっています。表示中の情報が古い可能性があります。
           </p>
         )}
-        {error && <p className="error-message">{error}</p>}
+        {error && (
+          <p className="error-message" role="alert">
+            原因：{error}
+          </p>
+        )}
         <p className="update-description">
           <span>空車情報は公式サイトから取得しています。</span>
           <span>通常は0～10分前の情報を表示します。</span>
