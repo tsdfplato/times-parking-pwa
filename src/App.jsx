@@ -244,6 +244,9 @@ function App() {
     useState('')
   const [notificationTestError, setNotificationTestError] =
     useState('')
+  const [notificationHistory, setNotificationHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
   const [notifierToken, setNotifierToken] = useState(() =>
     localStorage.getItem(API_TOKEN_STORAGE_KEY) || '',
   )
@@ -387,6 +390,44 @@ function App() {
     }
   }, [notifierHeaders])
 
+  const loadNotificationHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    setHistoryError('')
+
+    try {
+      const response = await fetch(
+        `${NOTIFIER_URL}/notification-history`,
+        {
+          method: 'GET',
+          cache: 'no-store',
+          headers: notifierHeaders,
+        },
+      )
+
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          data.error || '通知履歴を取得できませんでした',
+        )
+      }
+
+      setNotificationHistory(
+        Array.isArray(data.history) ? data.history : [],
+      )
+    } catch (historyFetchError) {
+      console.error(historyFetchError)
+      setHistoryError(
+        getReadableErrorMessage(
+          historyFetchError,
+          '通知履歴を取得できませんでした',
+        ),
+      )
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [notifierHeaders])
+
   useEffect(() => {
     const userAgent = navigator.userAgent || ''
     setIsGalaxyView(/Android/i.test(userAgent))
@@ -442,8 +483,16 @@ function App() {
   }, [loadStatus])
 
   useEffect(() => {
-    if (isGalaxyView && notifierToken) loadSchedules()
-  }, [isGalaxyView, notifierToken, loadSchedules])
+    if (isGalaxyView && notifierToken) {
+      loadSchedules()
+      loadNotificationHistory()
+    }
+  }, [
+    isGalaxyView,
+    notifierToken,
+    loadSchedules,
+    loadNotificationHistory,
+  ])
 
   const sortedParks = useMemo(
     () => [...parks].sort((a, b) => a.no - b.no),
@@ -1372,6 +1421,59 @@ function App() {
                     </div>
                   )}
                 </>
+              )}
+
+              {notifierToken && (
+                <section
+                  className="notification-history-panel"
+                  aria-label="通知履歴"
+                >
+                  <div className="notification-history-heading">
+                    <h3>通知履歴</h3>
+                    <button
+                      type="button"
+                      onClick={loadNotificationHistory}
+                      disabled={historyLoading}
+                    >
+                      {historyLoading ? '読込中…' : '再読込'}
+                    </button>
+                  </div>
+
+                  {historyError && (
+                    <p
+                      className="notification-history-error"
+                      role="alert"
+                    >
+                      {historyError}
+                    </p>
+                  )}
+
+                  {!historyLoading &&
+                  notificationHistory.length === 0 ? (
+                    <p className="notification-history-empty">
+                      過去30日間の通知履歴はありません
+                    </p>
+                  ) : (
+                    <div className="notification-history-list">
+                      {notificationHistory.map((item) => (
+                        <article
+                          className="notification-history-item"
+                          key={item.id}
+                        >
+                          <div>
+                            <strong>
+                              {formatUpdatedAt(item.notifiedAt)}
+                            </strong>
+                            <p>{item.message}</p>
+                          </div>
+                          <span>
+                            {item.sent || 0}台へ送信
+                          </span>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
               )}
 
               {scheduleMessage && (

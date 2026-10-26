@@ -22,6 +22,8 @@ const LAST_LINE_USER_KEY = 'line:last-user'
 
 const MAX_STATUS_AGE_MS = 20 * 60 * 1000
 const FCM_PREFIX = 'fcm:'
+const NOTIFICATION_HISTORY_PREFIX = 'notification-history:'
+const NOTIFICATION_HISTORY_TTL_SECONDS = 30 * 24 * 60 * 60
 
 
 
@@ -906,6 +908,53 @@ async function listFcmDevices(env) {
   return devices.filter(Boolean)
 }
 
+async function saveNotificationHistory(
+  env,
+  delivery,
+  result,
+) {
+  const notifiedAt = new Date().toISOString()
+  const id = crypto.randomUUID()
+
+  await env.SCHEDULES.put(
+    `${NOTIFICATION_HISTORY_PREFIX}${id}`,
+    JSON.stringify({
+      id,
+      scheduleId: delivery.scheduleId || '',
+      occurrenceAt: delivery.occurrenceAt || notifiedAt,
+      notifiedAt,
+      message: delivery.message || '',
+      channel: 'fcm',
+      sent: result.sent || 0,
+      failed: result.failed || 0,
+    }),
+    {
+      expirationTtl: NOTIFICATION_HISTORY_TTL_SECONDS,
+    },
+  )
+}
+
+async function listNotificationHistory(env) {
+  const listed = await env.SCHEDULES.list({
+    prefix: NOTIFICATION_HISTORY_PREFIX,
+  })
+
+  const history = await Promise.all(
+    listed.keys.map(({ name }) =>
+      env.SCHEDULES.get(name, 'json'),
+    ),
+  )
+
+  return history
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        new Date(b.notifiedAt).getTime() -
+        new Date(a.notifiedAt).getTime(),
+    )
+    .slice(0, 20)
+}
+
 async function sendFcmToAll(env, message) {
   const devices = await listFcmDevices(env)
   const [title, ...bodyLines] = message.split('\n')
@@ -1410,6 +1459,12 @@ async function sendPendingDelivery(env, delivery, now) {
     `${DELIVERY_PREFIX}${delivery.id}`
 
   if (result.sent > 0) {
+    await saveNotificationHistory(
+      env,
+      delivery,
+      result,
+    )
+
     await completeScheduleDelivery(
       env,
       delivery.id,
@@ -1998,6 +2053,18 @@ async function handleRequest(request, env) {
 
 
 
+
+  if (
+    url.pathname === '/notification-history' &&
+    request.method === 'GET'
+  ) {
+    const history = await listNotificationHistory(env)
+
+    return json({
+      ok: true,
+      history,
+    })
+  }
 
   if (
     url.pathname === '/fcm-devices' &&
