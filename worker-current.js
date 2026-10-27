@@ -1213,65 +1213,37 @@ function statusAgeMs(statusData, now) {
 
 
 async function saveDelayedSchedule(
-
   env,
-
   schedule,
-
   now,
-
   statusData,
-
 ) {
-
-  if (!schedule.delayAlertedAt) {
-
-    const lastTime = formatShortTime(
-
-      statusData?.updatedAt ||
-
-        statusData?.fetchedAt,
-
-    )
-
-
-
-    await sendPreferredNotification(
-
-      env,
-
-      `タイムズ公式${lastTime}時点\n情報取得遅延中`,
-
-    )
-
+  // KV_FIX_DELAY_WRITE_ONCE
+  // 遅延を一度記録した後は、毎分KVへ書き込まない。
+  if (schedule.delayAlertedAt) {
+    return
   }
 
-
-
-  await env.SCHEDULES.put(
-
-    `${SCHEDULE_PREFIX}${schedule.id}`,
-
-    JSON.stringify({
-
-      ...schedule,
-
-      delayAlertedAt:
-
-        schedule.delayAlertedAt ||
-
-        new Date(now).toISOString(),
-
-
-
-      lastRetryAt:
-
-        new Date(now).toISOString(),
-
-    }),
-
+  const lastTime = formatShortTime(
+    statusData?.updatedAt ||
+      statusData?.fetchedAt,
   )
 
+  await sendPreferredNotification(
+    env,
+    `タイムズ公式${lastTime}時点\n情報取得遅延中`,
+  )
+
+  const delayedAt = new Date(now).toISOString()
+
+  await env.SCHEDULES.put(
+    `${SCHEDULE_PREFIX}${schedule.id}`,
+    JSON.stringify({
+      ...schedule,
+      delayAlertedAt: delayedAt,
+      lastRetryAt: delayedAt,
+    }),
+  )
 }
 
 
@@ -1867,23 +1839,42 @@ async function handleRequest(request, env) {
         )
       }
 
-      await env.SCHEDULES.put(
-        `${FCM_PREFIX}${deviceId}`,
-        JSON.stringify({
-          deviceId,
-          token,
-          platform:
-            typeof body.platform === 'string'
-              ? body.platform
-              : 'android',
-          updatedAt:
-            new Date().toISOString(),
-        }),
-      )
+      // KV_FIX_FCM_WRITE_IF_CHANGED
+      const platform =
+        typeof body.platform === 'string'
+          ? body.platform
+          : 'android'
+
+      const deviceKey =
+        `${FCM_PREFIX}${deviceId}`
+
+      const existingDevice =
+        await env.SCHEDULES.get(
+          deviceKey,
+          'json',
+        )
+
+      const unchanged =
+        existingDevice?.token === token &&
+        existingDevice?.platform === platform
+
+      if (!unchanged) {
+        await env.SCHEDULES.put(
+          deviceKey,
+          JSON.stringify({
+            deviceId,
+            token,
+            platform,
+            updatedAt:
+              new Date().toISOString(),
+          }),
+        )
+      }
 
       return json({
         ok: true,
         deviceId,
+        unchanged,
       })
     } catch (error) {
       return json(
