@@ -2218,6 +2218,14 @@ async function handleRequest(request, env) {
 
   ) {
 
+    return json(
+      {
+        ok: false,
+        error: 'PWA直接通知の新規登録は停止しました',
+      },
+      410,
+    )
+
     try {
 
       const body = await request.json()
@@ -2740,4 +2748,5 @@ export default {
   },
 
 }
+
 
