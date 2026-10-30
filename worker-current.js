@@ -2078,6 +2078,10 @@ async function handleRequest(request, env) {
     request.method === 'POST'
   ) {
     try {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 10000)
+      })
+
       const result = await sendFcmToAll(
         env,
         'タイムズ野田６丁目は空車\n00:00現在、タイムズ野田６丁目は空車です',
@@ -2156,7 +2160,7 @@ async function handleRequest(request, env) {
 
         env,
 
-        'タイムズ通知テスト Galaxy・Garmin確認',
+        'タイムズ通知テスト スマートフォン・Garmin確認',
 
       )
 
