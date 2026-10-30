@@ -734,6 +734,10 @@ function App() {
     setNotificationTestLoading(true)
 
     try {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 10000)
+      })
+
       const response = await fetch(
         `${NOTIFIER_URL}/test-fcm`,
         {
@@ -1079,7 +1083,7 @@ function App() {
             disabled={notificationTestLoading}
           >
             {notificationTestLoading
-              ? '10秒後に送信中…'
+              ? '10秒待機中…'
               : '10秒後に通知テスト'}
           </button>
 
