@@ -704,12 +704,12 @@ function App() {
     setNotifierToken(nextToken)
     setTokenInput('')
     setScheduleError('')
-    setScheduleMessage('APIトークンをGalaxyに保存しました')
+    setScheduleMessage('APIトークンをスマートフォンに保存しました')
     window.setTimeout(() => setScheduleMessage(''), 4000)
   }
 
   const clearNotifierToken = () => {
-    if (!window.confirm('Galaxyに保存したAPIトークンを削除しますか？')) {
+    if (!window.confirm('スマートフォンに保存したAPIトークンを削除しますか？')) {
       return
     }
 
@@ -753,7 +753,7 @@ function App() {
       }
 
       setNotificationTestMessage(
-        'Galaxyへテスト通知を送信しました',
+        'スマートフォンへテスト通知を送信しました',
       )
 
       window.setTimeout(() => {
@@ -1047,7 +1047,7 @@ function App() {
 
           <div className="system-status-item">
             <span className="system-status-label">
-              Galaxy通知
+              スマートフォン通知
             </span>
             <strong>{galaxyNotificationText}</strong>
           </div>
@@ -1064,10 +1064,10 @@ function App() {
       {IS_ANDROID_APK && (
         <section
           className="notification-test-panel"
-          aria-label="Galaxy通知テスト"
+          aria-label="スマートフォン通知テスト"
         >
           <div className="notification-test-text">
-            <strong>Galaxy通知テスト</strong>
+            <strong>スマートフォン通知テスト</strong>
             <span>
               アプリを閉じた状態でも通知できるか確認します
             </span>
@@ -1079,8 +1079,8 @@ function App() {
             disabled={notificationTestLoading}
           >
             {notificationTestLoading
-              ? '送信中…'
-              : '今すぐ通知テスト'}
+              ? '10秒後に送信中…'
+              : '10秒後に通知テスト'}
           </button>
 
           {notificationTestMessage && (
@@ -1167,7 +1167,7 @@ function App() {
 
           {showSchedulePanel && (
             <div className="schedule-content">
-              <h2>Galaxy・Garminへの通知予約</h2>
+              <h2>スマートフォン・Garminへの通知予約</h2>
               <p className="schedule-description">
                 指定日時に、選択した駐車場の空車情報を通知します。
               </p>
@@ -1190,9 +1190,9 @@ function App() {
                     autoComplete="off"
                     placeholder="APIトークンを貼り付け"
                   />
-                  <button type="submit">Galaxyに保存</button>
+                  <button type="submit">スマートフォンに保存</button>
                   <p>
-                    トークンはGitHubへ送らず、このGalaxy内だけに保存します。
+                    トークンはGitHubへ送らず、このスマートフォン内だけに保存します。
                   </p>
                 </form>
               ) : (
