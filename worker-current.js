@@ -2784,13 +2784,17 @@ export default {
 
   scheduled(event, env, ctx) {
 
-    const tasks = [
-      runDueSchedules(env),
-    ]
-
     const scheduledMinute = Math.floor(
       event.scheduledTime / 60000,
     )
+
+    const tasks = []
+
+    // Workers KVの無料枠（list 1,000回/日）を超えないよう、
+    // 通知予約の確認は2分ごとに実行する。
+    if (scheduledMinute % 2 === 0) {
+      tasks.push(runDueSchedules(env))
+    }
 
     if (scheduledMinute % 5 === 0) {
       tasks.push(
@@ -2798,7 +2802,9 @@ export default {
       )
     }
 
-    ctx.waitUntil(Promise.all(tasks))
+    if (tasks.length > 0) {
+      ctx.waitUntil(Promise.all(tasks))
+    }
 
   },
 
