@@ -57,8 +57,8 @@ jobs:
             fi
           done
 
-          echo "Parking status fetch failed after 3 attempts"
-          exit 1
+          echo "::warning::Parking status fetch failed after 3 attempts. Deploying the previous status data so the PWA and APK remain available."
+          exit 0
 
       - name: Build PWA
         run: npm run build
