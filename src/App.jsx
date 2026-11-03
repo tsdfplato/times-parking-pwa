@@ -20,9 +20,7 @@ const CHANGE_STORAGE_KEY = 'times-parking-status-changes'
 const CHANGE_DISPLAY_MS = 10 * 60 * 1000
 const CLOUD_STOP_MINUTES = 15
 const IS_ANDROID_APK = import.meta.env.VITE_ANDROID_ASSET === 'true'
-const STATUS_URL = IS_ANDROID_APK
-  ? `${NOTIFIER_URL}/status`
-  : `${import.meta.env.BASE_URL}status.json`
+const STATUS_URL = `${NOTIFIER_URL}/status`
 const WEEKDAYS = [
   { value: 1, label: '月' },
   { value: 2, label: '火' },

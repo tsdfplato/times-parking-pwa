@@ -2,6 +2,18 @@ const STATUS_URL =
 
   'https://tsdfplato.github.io/times-parking-pwa/status.json'
 
+const STATUS_CACHE_URL =
+  'https://times-parking-notifier.kubota-mlc.workers.dev/__cache/official-status-v1'
+
+const OFFICIAL_PARKS = [
+  { no: 1, id: 'BUK0060527', name: 'タイムズ野田６丁目', distance: '本駐車場' },
+  { no: 2, id: 'BUK0077629', name: 'タイムズ野田６丁目第２', distance: '本駐車場から19m' },
+  { no: 3, id: 'BUK0090120', name: 'タイムズ野田６丁目第３', distance: '本駐車場から38m' },
+  { no: 4, id: 'BUK0061797', name: 'タイムズＪＲ野田駅西第２', distance: '本駐車場から324m' },
+  { no: 5, id: 'BUK0018415', name: 'タイムズ福島吉野', distance: '本駐車場から367m' },
+  { no: 6, id: 'BUK0064561', name: 'タイムズ吉野５丁目第３', distance: '本駐車場から405m' },
+]
+
 
 
 const SCHEDULE_PREFIX = 'schedule:'
@@ -349,40 +361,160 @@ async function listSchedules(env) {
 
 
 
-async function fetchParkingStatus() {
+function decodeOfficialHtml(value = '') {
+  return value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/&#(\d+);/g, (_, decimal) =>
+      String.fromCodePoint(Number.parseInt(decimal, 10)),
+    )
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+}
 
-  const response = await fetch(
-
-    `${STATUS_URL}?t=${Date.now()}`,
-
-    {
-
-      headers: {
-
-        'Cache-Control': 'no-cache',
-
-      },
-
-    },
-
+function officialElementText(html, matcher) {
+  return decodeOfficialHtml(
+    (html.match(matcher)?.[1] || '').replace(/<[^>]*>/g, ' '),
   )
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
+function normalizeOfficialStatus(value = '') {
+  const text = value.replace(/\s+/g, '')
+  if (text.includes('満')) return '満車'
+  if (text.includes('混')) return '混雑'
+  if (text.includes('空')) return '空車'
+  if (text.includes('休') || text.includes('閉')) return '休止'
+  return '不明'
+}
 
+async function fetchOfficialPark(park) {
+  const response = await fetch(
+    `https://times-info.net/P27-osaka/C103/park-detail-${park.id}/`,
+    {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ja-JP,ja;q=0.9',
+        'User-Agent':
+          'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36',
+      },
+      redirect: 'follow',
+    },
+  )
+  const html = await response.text()
 
   if (!response.ok) {
-
     throw new Error(
-
-      `空車情報の取得に失敗しました: ${response.status}`,
-
+      `公式サイトHTTP ${response.status}: ${park.id}`,
     )
-
   }
 
+  const status = normalizeOfficialStatus(
+    officialElementText(
+      html,
+      /<[^>]+id=["']mankuuText["'][^>]*>([\s\S]*?)<\/[^>]+>/i,
+    ),
+  )
+  const updatedAt = officialElementText(
+    html,
+    /<[^>]+class=["'][^"']*c-topInfo_updateTime_time[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i,
+  )
+    .replace(/現在/g, '')
+    .trim()
 
+  if (status === '不明' || !updatedAt) {
+    throw new Error(
+      `公式情報を解析できません: ${park.id}`,
+    )
+  }
+
+  return {
+    ...park,
+    status,
+    updatedAt,
+  }
+}
+
+async function fetchOfficialParkingStatus() {
+  const cache = caches.default
+  const cacheKey = new Request(STATUS_CACHE_URL)
+  const cachedResponse = await cache.match(cacheKey)
+
+  if (cachedResponse) {
+    return cachedResponse.json()
+  }
+
+  const fetchedParks = await Promise.all(
+    OFFICIAL_PARKS.map(fetchOfficialPark),
+  )
+  const updatedTimes = [
+    ...new Set(
+      fetchedParks.map((park) => park.updatedAt),
+    ),
+  ]
+
+  if (updatedTimes.length !== 1) {
+    throw new Error(
+      `公式更新時刻が一致しません: ${updatedTimes.join(', ')}`,
+    )
+  }
+
+  const statusData = {
+    updatedAt: updatedTimes[0],
+    fetchedAt: new Date().toISOString(),
+    parks: fetchedParks.map(
+      ({ updatedAt: _updatedAt, ...park }) => park,
+    ),
+  }
+  const cacheResponse = new Response(
+    JSON.stringify(statusData),
+    {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=300',
+      },
+    },
+  )
+
+  await cache.put(cacheKey, cacheResponse)
+  return statusData
+}
+
+async function fetchFallbackParkingStatus() {
+  const response = await fetch(
+    `${STATUS_URL}?t=${Date.now()}`,
+    {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `予備データの取得に失敗しました: ${response.status}`,
+    )
+  }
 
   return response.json()
+}
 
+async function fetchParkingStatus() {
+  try {
+    return await fetchOfficialParkingStatus()
+  } catch (error) {
+    console.error(
+      '公式サイト直接取得失敗:',
+      error.message,
+    )
+    return fetchFallbackParkingStatus()
+  }
 }
 
 
@@ -1774,36 +1906,52 @@ async function handleRequest(request, env) {
     request.method === 'GET'
   ) {
     try {
-      const response = await fetch(
-        `${STATUS_URL}?t=${Date.now()}`,
-        {
-          headers: {
-            'Cache-Control': 'no-cache',
-            Pragma: 'no-cache',
-          },
-          cf: {
-            cacheTtl: 0,
-            cacheEverything: false,
-          },
-        },
-      )
+      const statusData =
+        await fetchOfficialParkingStatus()
 
-      return new Response(response.body, {
-        status: response.status,
+      return new Response(
+        JSON.stringify(statusData),
+        {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json; charset=utf-8',
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Cache-Control': 'public, max-age=300',
+            'X-Status-Source': 'times-official',
+          },
         },
-      })
-    } catch {
-      return json(
-        {
-          ok: false,
-          error: '空車情報を取得できませんでした',
-        },
-        502,
       )
+    } catch (error) {
+      console.error(
+        '公式サイト直接取得失敗:',
+        error.message,
+      )
+
+      try {
+        const fallbackData =
+          await fetchFallbackParkingStatus()
+
+        return new Response(
+          JSON.stringify(fallbackData),
+          {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json; charset=utf-8',
+              'Cache-Control': 'no-store',
+              'X-Status-Source': 'github-fallback',
+              'X-Status-Error': error.message.slice(0, 180),
+            },
+          },
+        )
+      } catch (fallbackError) {
+        return json(
+          {
+            ok: false,
+            error:
+              `空車情報を取得できませんでした: ${error.message}; ${fallbackError.message}`,
+          },
+          502,
+        )
+      }
     }
   }
 
@@ -2794,12 +2942,6 @@ export default {
     // 通知予約の確認は2分ごとに実行する。
     if (scheduledMinute % 2 === 0) {
       tasks.push(runDueSchedules(env))
-    }
-
-    if (scheduledMinute % 5 === 0) {
-      tasks.push(
-        triggerGitHubStatusUpdate(env),
-      )
     }
 
     if (tasks.length > 0) {
