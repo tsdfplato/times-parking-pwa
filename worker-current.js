@@ -1902,9 +1902,234 @@ async function handleRequest(request, env) {
   const url = new URL(request.url)
 
   if (
+    url.pathname === '/status-upload' &&
+    request.method === 'POST'
+  ) {
+    if (!isAuthorized(request, env)) {
+      return json(
+        {
+          ok: false,
+          error: '認証に失敗しました',
+        },
+        401,
+      )
+    }
+
+    try {
+      const body = await request.json()
+
+      if (
+        !body ||
+        !Array.isArray(body.parks) ||
+        body.parks.length !== OFFICIAL_PARKS.length
+      ) {
+        return json(
+          {
+            ok: false,
+            error: '駐車場データが正しくありません',
+          },
+          400,
+        )
+      }
+
+      const allowedStatuses = [
+        '空車',
+        '混雑',
+        '満車',
+      ]
+
+      const expectedIds = OFFICIAL_PARKS
+        .map((park) => park.id)
+        .sort()
+
+      const receivedIds = body.parks
+        .map((park) => park?.id)
+        .sort()
+
+      if (
+        JSON.stringify(expectedIds) !==
+        JSON.stringify(receivedIds)
+      ) {
+        return json(
+          {
+            ok: false,
+            error: '駐車場IDが正しくありません',
+          },
+          400,
+        )
+      }
+
+      const invalidPark = body.parks.find(
+        (park) =>
+          typeof park?.id !== 'string' ||
+          !allowedStatuses.includes(park?.status),
+      )
+
+      if (invalidPark) {
+        return json(
+          {
+            ok: false,
+            error: '空車状態が正しくありません',
+          },
+          400,
+        )
+      }
+
+      const fetchedAtMs = Date.parse(
+        body.fetchedAt,
+      )
+
+      if (!Number.isFinite(fetchedAtMs)) {
+        return json(
+          {
+            ok: false,
+            error: '取得日時が正しくありません',
+          },
+          400,
+        )
+      }
+
+      const ageMs = Date.now() - fetchedAtMs
+
+      if (
+        ageMs > 30 * 60 * 1000 ||
+        ageMs < -5 * 60 * 1000
+      ) {
+        return json(
+          {
+            ok: false,
+            error:
+              '取得データの日時が古いか未来です',
+          },
+          400,
+        )
+      }
+
+      const normalizedParks =
+        OFFICIAL_PARKS.map(
+          (officialPark) => {
+            const receivedPark =
+              body.parks.find(
+                (park) =>
+                  park.id === officialPark.id,
+              )
+
+            return {
+              ...officialPark,
+              status: receivedPark.status,
+            }
+          },
+        )
+
+      const normalizedData = {
+        updatedAt:
+          typeof body.updatedAt === 'string'
+            ? body.updatedAt
+            : body.fetchedAt,
+        fetchedAt:
+          new Date(fetchedAtMs).toISOString(),
+        source: 'local-playwright-upload',
+        parks: normalizedParks,
+      }
+
+      const storageKey =
+        'parking-status:current'
+
+      const currentData =
+        await env.SCHEDULES.get(
+          storageKey,
+          'json',
+        )
+
+      const currentFetchedAtMs = Date.parse(
+        currentData?.fetchedAt || '',
+      )
+
+      if (
+        Number.isFinite(currentFetchedAtMs) &&
+        currentFetchedAtMs >= fetchedAtMs
+      ) {
+        return json({
+          ok: true,
+          saved: false,
+          reason:
+            '既に同じか新しい情報が保存されています',
+          fetchedAt: currentData.fetchedAt,
+        })
+      }
+
+      await env.SCHEDULES.put(
+        storageKey,
+        JSON.stringify(normalizedData),
+      )
+
+      return json({
+        ok: true,
+        saved: true,
+        fetchedAt: normalizedData.fetchedAt,
+        updatedAt: normalizedData.updatedAt,
+        parkCount: normalizedData.parks.length,
+      })
+    } catch (error) {
+      console.error(
+        'status-upload失敗:',
+        error,
+      )
+
+      return json(
+        {
+          ok: false,
+          error:
+            error?.message ||
+            '空車情報を保存できませんでした',
+        },
+        500,
+      )
+    }
+  }
+
+
+
+  if (
     url.pathname === '/status' &&
     request.method === 'GET'
   ) {
+
+    try {
+      const uploadedStatus =
+        await env.SCHEDULES.get(
+          'parking-status:current',
+          'json',
+        )
+
+      if (
+        uploadedStatus &&
+        Array.isArray(uploadedStatus.parks) &&
+        uploadedStatus.parks.length > 0
+      ) {
+        return new Response(
+          JSON.stringify(uploadedStatus),
+          {
+            headers: {
+              ...corsHeaders,
+              'Content-Type':
+                'application/json; charset=utf-8',
+              'Cache-Control':
+                'no-store, no-cache, must-revalidate',
+              'X-Status-Source':
+                'local-playwright-upload',
+            },
+          },
+        )
+      }
+    } catch (cacheError) {
+      console.error(
+        '保存済み空車情報の取得失敗:',
+        cacheError,
+      )
+    }
+
+
     try {
       const statusData =
         await fetchOfficialParkingStatus()
