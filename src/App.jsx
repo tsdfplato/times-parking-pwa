@@ -273,21 +273,41 @@ function App() {
     if (manual) setSuccessMessage('')
 
     try {
-      const response = await fetch(
-        `${STATUS_URL}?t=${Date.now()}`,
-        {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-            Pragma: 'no-cache',
-          },
+      const requestOptions = {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
         },
-      )
+      }
 
-      if (!response.ok) {
-        throw new Error(
-          `空車情報を取得できませんでした（HTTP ${response.status}）`,
+      let response
+
+      try {
+        response = await fetch(
+          `${STATUS_URL}?t=${Date.now()}`,
+          requestOptions,
         )
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+      } catch (primaryError) {
+        console.warn(
+          '通知サーバーから取得できないため、ローカル公式取得結果を使用します',
+          primaryError,
+        )
+
+        response = await fetch(
+          `./status-local.json?t=${Date.now()}`,
+          requestOptions,
+        )
+
+        if (!response.ok) {
+          throw new Error(
+            `空車情報を取得できませんでした（HTTP ${response.status}）`,
+          )
+        }
       }
 
       const data = await response.json()
