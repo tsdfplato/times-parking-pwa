@@ -1605,6 +1605,33 @@ async function sendPendingDelivery(env, delivery, now) {
 
 
 
+async function fetchParkingStatusForSchedules(env) {
+  try {
+    const uploadedStatus =
+      await env.SCHEDULES.get(
+        'parking-status:current',
+        'json',
+      )
+
+    if (
+      uploadedStatus &&
+      Array.isArray(uploadedStatus.parks) &&
+      uploadedStatus.parks.length > 0 &&
+      uploadedStatus.fetchedAt
+    ) {
+      return uploadedStatus
+    }
+  } catch (error) {
+    console.error(
+      '保存済み空車情報の取得失敗:',
+      error,
+    )
+  }
+
+  return fetchParkingStatus()
+}
+
+
 async function runDueSchedules(env) {
 
   const now = Date.now()
@@ -1637,7 +1664,7 @@ async function runDueSchedules(env) {
 
   try {
 
-    statusData = await fetchParkingStatus()
+    statusData = await fetchParkingStatusForSchedules(env)
 
   } catch (error) {
 
